@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LOGIN</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-image: url("/static/uc.jpg");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-color: rgba(0, 0, 0, 0.5);
+        background-blend-mode: overlay;
+      }
+
+      .login-container {
+        background-color: rgba(255, 255, 255, 0.95);
+        padding: 30px 40px;
+        border-radius: 20px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        width: 350px;
+        backdrop-filter: blur(10px);
+        margin-top: -50px;
+      }
+
+      .login-container h2 {
+        margin-top: 0;
+        margin-bottom: 25px;
+        font-size: 22px;
+        line-height: 1.3;
+      }
+
+      .input-field {
+        width: 100%;
+        padding: 12px;
+        margin: 12px 0;
+        border-radius: 8px;
+        border: 2px solid #e0e0e0;
+        box-sizing: border-box;
+        transition: all 0.3s ease;
+        font-size: 14px;
+      }
+
+      .input-field:focus {
+        border-color: #003366;
+        outline: none;
+        box-shadow: 0 0 5px rgba(0, 51, 102, 0.2);
+      }
+
+      .login-button {
+        width: 100%;
+        padding: 12px;
+        background-color: #003366;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 10px;
+      }
+
+      .login-button:hover {
+        background-color: #004d99;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 51, 102, 0.2);
+      }
+
+      .forgot-password {
+        text-align: center;
+        margin-top: 20px;
+      }
+
+      .forgot-password a {
+        color: #003366;
+        text-decoration: none;
+        font-size: 14px;
+        transition: all 0.3s ease;
+      }
+
+      .forgot-password a:hover {
+        color: #004d99;
+        text-decoration: underline;
+      }
+
+      .register-section {
+        margin-top: 25px;
+        text-align: center;
+      }
+
+      .register-button {
+        padding: 12px 30px;
+        background-color: transparent;
+        color: #003366;
+        border: 2px solid #003366;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .register-button:hover {
+        background-color: #003366;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 51, 102, 0.2);
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(5px);
+      }
+
+      .modal-content {
+        background-color: white;
+        margin: 3% auto;
+        padding: 30px;
+        border-radius: 20px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        animation: modalSlideIn 0.3s ease;
+      }
+
+      @keyframes modalSlideIn {
+        from {
+          transform: translateY(-100px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      .close {
+        float: right;
+        cursor: pointer;
+        font-size: 28px;
+        color: #003366;
+        transition: all 0.3s ease;
+      }
+
+      .close:hover {
+        color: #004d99;
+        transform: rotate(90deg);
+      }
+
+      .modal-content h2 {
+        color: #003366;
+        text-align: center;
+        margin-bottom: 25px;
+        font-size: 24px;
+        font-weight: 600;
+      }
+
+      select.input-field {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23003366' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 35px;
+      }
+
+      /* Flash messages styling */
+      .flash-messages {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+      }
+
+      .flash-message {
+        background-color: #003366;
+        color: black;
+        padding: 15px 25px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        animation: slideIn 0.3s ease;
+      }
+
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      /* New styles for the logo */
+      .logo-container {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .logo {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-bottom: 15px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        border: 3px solid #003366;
+        transition: transform 0.3s ease;
+      }
+
+      .logo:hover {
+        transform: scale(1.05);
+      }
+
+      /* Add these styles to your existing styles */
+      .flash-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+      }
+
+      .flash-message {
+        background-color: #ffffff;
+        border-left: 4px solid;
+        padding: 15px 25px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        transition: opacity 0.3s ease;
+      }
+
+      .flash-success {
+        border-left-color: #28a745;
+      }
+
+      .flash-error {
+        border-left-color: #dc3545;
+      }
+
+      .flash-warning {
+        border-left-color: #ffc107;
+      }
+
+      .flash-info {
+        border-left-color: #17a2b8;
+      }
+
+      .admin-login-btn {
+        background-color: #003366;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 10px;
+        width: 100%;
+      }
+
+      .admin-login-btn:hover {
+        background-color: #002244;
+      }
+
+      .or-divider {
+        text-align: center;
+        margin: 15px 0;
+        color: #666;
+      }
+
+      /* Add these styles */
+      .user-type-selection {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+
+      .type-btn {
+        padding: 10px 20px;
+        border: 2px solid #003366;
+        background: transparent;
+        color: #003366;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .type-btn.active {
+        background: #003366;
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Add Flash Messages Container -->
+    <div class="flash-container">
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
+      <div class="flash-message flash-{{ category }}">{{ message }}</div>
+      {% endfor %} {% endif %} {% endwith %}
+    </div>
+
+    <div class="login-container">
+      <div class="logo-container">
+        <img src="/static/CSS.png" alt="CSS Logo" class="logo" />
+      </div>
+      <h2>CSS SIT-IN MONITORING SYSTEM</h2>
+      <form action="/login" method="POST">
+        <input
+          type="text"
+          name="username"
+          class="input-field"
+          placeholder="Username"
+          required
+        /><br />
+        <input
+          type="password"
+          name="password"
+          class="input-field"
+          placeholder="Password"
+          required
+        /><br />
+        <button type="submit" class="login-button">Login</button>
+      </form>
+      <div class="forgot-password">
+        <a href="#">Forgot your password?</a>
+      </div>
+      <div class="register-section">
+        <button onclick="openRegisterModal()" class="register-button">
+          Register
+        </button>
+      </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div id="registerModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeRegisterModal()">&times;</span>
+        <div class="logo-container">
+          <img
+            src="/static/CSS.png"
+            alt="CSS Logo"
+            class="logo"
+            style="width: 80px; height: 80px"
+          />
+        </div>
+        <h2>Registration Form</h2>
+
+        <!-- User Type Selection -->
+        <div
+          class="user-type-selection"
+          style="margin-bottom: 20px; text-align: center"
+        >
+          <button
+            class="type-btn active"
+            id="studentBtn"
+          >
+            Register as Student
+          </button>
+        </div>
+
+        <!-- Student Registration Form -->
+        <form action="/register" method="POST" id="studentForm">
+          <input type="hidden" name="user_type" value="student" />
+          <input
+            type="text"
+            name="idno"
+            class="input-field"
+            placeholder="Student ID Number"
+            required
+          />
+          <input
+            type="text"
+            name="lastname"
+            class="input-field"
+            placeholder="Last Name"
+            required
+          />
+          <input
+            type="text"
+            name="firstname"
+            class="input-field"
+            placeholder="First Name"
+            required
+          />
+          <input
+            type="text"
+            name="middlename"
+            class="input-field"
+            placeholder="Middle Name"
+          />
+          <select name="course" class="input-field" required>
+            <option value="">Select Course</option>
+            <option value="1">
+              Bachelor of Science in Information Technology
+            </option>
+            <option value="2">
+              Bachelor of Science in Computer Engineering
+            </option>
+            <option value="3">Bachelor of Science in</option>
+            <option value="4">4th Year</option>
+          </select>
+          <select name="year_level" class="input-field" required>
+            <option value="">Select Year Level</option>
+            <option value="1">1st Year</option>
+            <option value="2">2nd Year</option>
+            <option value="3">3rd Year</option>
+            <option value="4">4th Year</option>
+          </select>
+          <input
+            type="email"
+            name="email"
+            class="input-field"
+            placeholder="Email Address"
+            required
+          />
+          <input
+            type="text"
+            name="username"
+            class="input-field"
+            placeholder="Username"
+            required
+          />
+          <input
+            type="password"
+            name="password"
+            class="input-field"
+            placeholder="Password"
+            required
+          />
+          <button type="submit" class="login-button">
+            Register as Student
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      function openRegisterModal() {
+        document.getElementById("registerModal").style.display = "block";
+      }
+
+      function closeRegisterModal() {
+        document.getElementById("registerModal").style.display = "none";
+      }
+
+      // Close modal when clicking outside
+      window.onclick = function (event) {
+        if (event.target == document.getElementById("registerModal")) {
+          closeRegisterModal();
+        }
+      };
+
+      // Show flash messages with auto-dismiss
+      document.addEventListener("DOMContentLoaded", function () {
+        const flashMessages = document.querySelectorAll(".flash-message");
+        flashMessages.forEach((message) => {
+          setTimeout(() => {
+            message.style.opacity = "0";
+            setTimeout(() => message.remove(), 300);
+          }, 5000);
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - CSS SIT-IN MONITORING SYSTEM</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-image: url('/static/uc.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-color: rgba(0, 0, 0, 0.5);
+            background-blend-mode: overlay;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #003366;
+        }
+
+        .user-info {
+            text-align: right;
+            color: #003366;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .profile-pic {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #003366;
+        }
+
+        .user-details {
+            text-align: right;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+
+        .menu-item {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .menu-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .menu-item i {
+            font-size: 2.5em;
+            color: #003366;
+            margin-bottom: 15px;
+        }
+
+        .menu-item h3 {
+            color: #003366;
+            margin: 0;
+            font-size: 1.2em;
+        }
+
+        .menu-item p {
+            color: #666;
+            margin: 10px 0 0;
+            font-size: 0.9em;
+        }
+
+        .logout-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+
+        /* Flash message styles */
+        .flash-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .flash-message {
+            background-color: #ffffff;
+            border-left: 4px solid;
+            padding: 15px 25px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: opacity 0.3s ease;
+        }
+
+        .flash-success {
+            border-left-color: #28a745;
+        }
+
+        .flash-error {
+            border-left-color: #dc3545;
+        }
+
+        .flash-warning {
+            border-left-color: #ffc107;
+        }
+
+        .flash-info {
+            border-left-color: #17a2b8;
+        }
+
+        /* Profile section */
+        .profile-section {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .profile-header img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #003366;
+        }
+
+        .profile-info h2 {
+            color: #003366;
+            margin: 0 0 10px 0;
+        }
+
+        .profile-info p {
+            margin: 5px 0;
+            color: #555;
+        }
+
+        .session-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .session-progress {
+            margin-top: 10px;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: #003366;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        /* Sessions table */
+        .sessions-section {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .sessions-section h2 {
+            color: #003366;
+            margin-top: 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #003366;
+            padding-bottom: 10px;
+        }
+
+        .sessions-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .sessions-table th, .sessions-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .sessions-table th {
+            background-color: #003366;
+            color: white;
+            font-weight: 600;
+        }
+
+        .sessions-table tr:hover {
+            background-color: rgba(0, 51, 102, 0.05);
+        }
+
+        .status-active {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .status-completed {
+            color: #6c757d;
+        }
+
+        .status-cancelled {
+            color: #dc3545;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .cancel-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .action-btn:hover {
+            opacity: 0.8;
+            transform: translateY(-2px);
+        }
+
+        /* Add session form */
+        .add-session-form {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #003366;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background-color: #003366;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: #004d99;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        // Prevent going back to login page
+        window.history.pushState(null, null, window.location.href);
+        window.onpopstate = function () {
+            window.history.pushState(null, null, window.location.href);
+        };
+
+        // Show flash messages with auto-dismiss
+        document.addEventListener('DOMContentLoaded', function() {
+            const flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(message => {
+                setTimeout(() => {
+                    message.style.opacity = '0';
+                    setTimeout(() => message.remove(), 300);
+                }, 5000);
+            });
+        });
+    </script>
+</head>
+<body>
+    <!-- Flash Messages Container -->
+    <div class="flash-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="dashboard-container">
+        <div class="header">
+            <div class="logo-section">
+                <img src="/static/CSS.png" alt="CSS Logo" class="logo">
+                <h1>CSS SIT-IN MONITORING SYSTEM</h1>
+            </div>
+            <div class="user-info">
+                <div class="user-details">
+                    <h3>Welcome, {{ student.firstname }} {{ student.lastname }}</h3>
+                    <p>{{ student.idno }} | 
+                        {% if student.course == '1' %}
+                            BSIT
+                        {% elif student.course == '2' %}
+                            BSCS
+                        {% elif student.course == '3' %}
+                            BSCE
+                        {% else %}
+                            Other
+                        {% endif %}
+                    </p>
+                    <a href="{{ url_for('logout') }}"><button class="logout-btn">Logout</button></a>
+                </div>
+                <img src="/static/profile_pictures/{{ student.profile_picture }}" alt="Profile Picture" class="profile-pic">
+            </div>
+        </div>
+
+        <!-- Profile Section -->
+        <div class="profile-section">
+            <div class="profile-header">
+                <img src="/static/profile_pictures/{{ student.profile_picture }}" alt="Profile Picture">
+                <div class="profile-info">
+                    <h2>{{ student.firstname }} {{ student.lastname }}</h2>
+                    <p><strong>ID:</strong> {{ student.idno }}</p>
+                    <p><strong>Course:</strong> 
+                        {% if student.course == '1' %}
+                            Bachelor of Science in Information Technology
+                        {% elif student.course == '2' %}
+                            Bachelor of Science in Computer Science
+                        {% elif student.course == '3' %}
+                            Bachelor of Science in Computer Engineering
+                        {% else %}
+                            Other
+                        {% endif %}
+                    </p>
+                    <p><strong>Year Level:</strong> {{ student.year_level }}</p>
+                    <p><strong>Email:</strong> {{ student.email }}</p>
+                </div>
+            </div>
+            
+            <div class="session-info">
+                <h3>Sit-In Sessions</h3>
+                <p>You have used {{ student.sessions_used|default(0) }} out of {{ student.max_sessions|default(25) }} available sessions.</p>
+                <div class="session-progress">
+                    <div class="progress-bar" id="sessionsProgressBar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Menu Grid -->
+        <div class="menu-grid">
+            <a href="{{ url_for('edit_profile') }}" style="text-decoration: none;">
+                <div class="menu-item">
+                    <i class="fas fa-user-edit"></i>
+                    <h3>Edit Profile</h3>
+                    <p>Update your personal information</p>
+                </div>
+            </a>
+
+            <a href="{{ url_for('lab_rules') }}" style="text-decoration: none;">
+                <div class="menu-item">
+                    <i class="fas fa-flask"></i>
+                    <h3>Lab Rules</h3>
+                    <p>View laboratory rules and regulations</p>
+                </div>
+            </a>
+
+            <div class="menu-item" onclick="toggleAddSessionForm()">
+                <i class="fas fa-calendar-plus"></i>
+                <h3>Add Sit-In Session</h3>
+                <p>Schedule a new sit-in session</p>
+            </div>
+
+            <a href="#sessions-section" style="text-decoration: none;">
+                <div class="menu-item">
+                    <i class="fas fa-history"></i>
+                    <h3>View Sessions</h3>
+                    <p>View your sit-in session history</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- Add Session Form (Hidden by default) -->
+        <div id="addSessionForm" class="sessions-section" style="display: none;">
+            <h2>Add New Sit-In Session</h2>
+            
+            {% if student.sessions_used < student.max_sessions %}
+                <form action="{{ url_for('add_session') }}" method="POST" class="add-session-form">
+                    <div class="form-group">
+                        <label for="lab_room">Laboratory Room</label>
+                        <select name="lab_room" id="lab_room" class="form-control" required>
+                            <option value="">Select Laboratory Room</option>
+                            <option value="Lab 1">Laboratory 1</option>
+                            <option value="Lab 2">Laboratory 2</option>
+                            <option value="Lab 3">Laboratory 3</option>
+                            <option value="Lab 4">Laboratory 4</option>
+                            <option value="Lab 5">Laboratory 5</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="date_time">Date and Time</label>
+                        <input type="datetime-local" name="date_time" id="date_time" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="duration">Duration (hours)</label>
+                        <select name="duration" id="duration" class="form-control" required>
+                            <option value="1">1 hour</option>
+                            <option value="2">2 hours</option>
+                            <option value="3">3 hours</option>
+                            <option value="4">4 hours</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="programming_language">Programming Language</label>
+                        <select name="programming_language" id="programming_language" class="form-control" required>
+                            <option value="">Select Programming Language</option>
+                            <option value="PHP">PHP</option>
+                            <option value="Java">Java</option>
+                            <option value="Python">Python</option>
+                            <option value="JavaScript">JavaScript</option>
+                            <option value="C++">C++</option>
+                            <option value="C#">C#</option>
+                            <option value="Ruby">Ruby</option>
+                            <option value="Swift">Swift</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">Schedule Session</button>
+                </form>
+            {% else %}
+                <div class="alert alert-warning">
+                    <p>You have used all your available sit-in sessions. Please contact the administrator if you need more sessions.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Sessions Section -->
+        <div id="sessions-section" class="sessions-section">
+            <h2>Your Sit-In Sessions</h2>
+            
+            {% if sessions %}
+                <table class="sessions-table">
+                    <thead>
+                        <tr>
+                            <th>Lab Room</th>
+                            <th>Date & Time</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                            <th>Programming Language</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in sessions %}
+                            <tr>
+                                <td>{{ session.lab_room }}</td>
+                                <td>{{ session.date_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>{{ session.duration }} hour(s)</td>
+                                <td>
+                                    {% if session.status == 'active' %}
+                                        <span class="status-active">Active</span>
+                                    {% elif session.status == 'completed' %}
+                                        <span class="status-completed">Completed</span>
+                                    {% else %}
+                                        <span class="status-cancelled">Cancelled</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ session.programming_language|default('Not specified') }}</td>
+                                <td>
+                                    {% if session.status == 'active' %}
+                                        <form action="{{ url_for('cancel_session', session_id=session.id) }}" method="POST" style="display: inline;">
+                                            <button type="submit" class="action-btn cancel-btn">Cancel</button>
+                                        </form>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>You have no sit-in sessions yet. Use the "Add Sit-In Session" option to schedule your first session.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // Auto-hide flash messages after 5 seconds
+        setTimeout(function() {
+            var flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(function(message) {
+                message.style.opacity = '0';
+                setTimeout(function() {
+                    message.style.display = 'none';
+                }, 500);
+            });
+        }, 5000);
+        
+        // Calculate progress bar width
+        document.addEventListener('DOMContentLoaded', function() {
+            var sessionsUsed = {{ student.sessions_used|default(0) }};
+            var maxSessions = {{ student.max_sessions|default(25) }};
+            var progressBar = document.getElementById('sessionsProgressBar');
+            
+            if (progressBar && maxSessions > 0) {
+                var percentage = (sessionsUsed / maxSessions) * 100;
+                progressBar.style.width = percentage + '%';
+            }
+        });
+        
+        // Toggle add session form
+        function toggleAddSessionForm() {
+            var form = document.getElementById('addSessionForm');
+            if (form.style.display === 'none') {
+                form.style.display = 'block';
+                // Scroll to form
+                form.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                form.style.display = 'none';
+            }
+        }
+        
+        // Set minimum date for datetime-local input to current date and time
+        document.addEventListener('DOMContentLoaded', function() {
+            var dateTimeInput = document.getElementById('date_time');
+            if (dateTimeInput) {
+                var now = new Date();
+                var year = now.getFullYear();
+                var month = (now.getMonth() + 1).toString().padStart(2, '0');
+                var day = now.getDate().toString().padStart(2, '0');
+                var hours = now.getHours().toString().padStart(2, '0');
+                var minutes = now.getMinutes().toString().padStart(2, '0');
+                
+                var minDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+                dateTimeInput.min = minDateTime;
+            }
+        });
+    </script>
+</body>
+</html>

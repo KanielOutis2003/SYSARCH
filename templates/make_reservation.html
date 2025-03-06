@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Make Reservation - CSS SIT-IN MONITORING SYSTEM</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        background-image: url("/static/uc.jpg");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-color: rgba(0, 0, 0, 0.5);
+        background-blend-mode: overlay;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .reservation-container {
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: rgba(255, 255, 255, 0.95);
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        color: #003366;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .form-group {
+        margin-bottom: 15px;
+      }
+
+      .form-group label {
+        display: block;
+        color: #003366;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+
+      .form-group input,
+      .form-group select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 1em;
+      }
+
+      .form-actions {
+        text-align: center;
+        margin-top: 20px;
+      }
+
+      .form-actions button {
+        background-color: #003366;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 1em;
+        transition: background-color 0.3s ease;
+      }
+
+      .form-actions button:hover {
+        background-color: #002244;
+      }
+
+      .back-btn {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 10px 20px;
+        background-color: #dc3545;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+      }
+
+      .back-btn:hover {
+        background-color: #c82333;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="reservation-container">
+      <h1>Make a Reservation</h1>
+
+      <!-- Reservation Form -->
+      <form action="/submit-reservation" method="POST">
+        <!-- Date -->
+        <div class="form-group">
+          <label for="date">Date</label>
+          <input type="date" id="date" name="date" required />
+        </div>
+
+        <!-- Time Slot -->
+        <div class="form-group">
+          <label for="time">Time Slot</label>
+          <select id="time" name="time" required>
+            <option value="08:00-10:00">08:00 AM - 10:00 AM</option>
+            <option value="10:00-12:00">10:00 AM - 12:00 PM</option>
+            <option value="01:00-03:00">01:00 PM - 03:00 PM</option>
+            <option value="03:00-05:00">03:00 PM - 05:00 PM</option>
+          </select>
+        </div>
+
+        <!-- Lab -->
+        <div class="form-group">
+          <label for="lab">Lab</label>
+          <select id="lab" name="lab" required>
+            <option value="Lab 1">Lab 1</option>
+            <option value="Lab 2">Lab 2</option>
+            <option value="Lab 3">Lab 3</option>
+            <option value="Lab 4">Lab 4</option>
+          </select>
+        </div>
+
+        <div>
+          <div class="form-group">
+          <label for="pc">PC</label>
+          <select id="lab" name="lab" required>
+            <option value="Lab 1">PC 1</option>
+            <option value="Lab 2">PC 2</option>
+            <option value="Lab 3">PC 3</option>
+            <option value="Lab 4">PC 4</option>
+          </select>
+        </div>
+
+        <!-- Purpose -->
+        <div class="form-group">
+          <label for="purpose">Purpose</label>
+          <select id="purpose" name="purpose" required>
+            <option value="Class Project">Class Project</option>
+            <option value="Thesis Work">Thesis Work</option>
+            <option value="Research">Research</option>
+            <option value="Personal Study">Personal Study</option>
+          </select>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="submit">Submit Reservation</button>
+        </div>
+      </form>
+
+      <!-- Back to Dashboard Button -->
+      <a href="/student-dashboard" class="back-btn">Back to Dashboard</a>
+    </div>
+  </body>
+</html>

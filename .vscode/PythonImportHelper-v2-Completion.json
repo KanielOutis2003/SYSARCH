@@ -1,0 +1,440 @@
+[
+    {
+        "label": "Flask",
+        "importPath": "flask",
+        "description": "flask",
+        "isExtraImport": true,
+        "detail": "flask",
+        "documentation": {}
+    },
+    {
+        "label": "render_template",
+        "importPath": "flask",
+        "description": "flask",
+        "isExtraImport": true,
+        "detail": "flask",
+        "documentation": {}
+    },
+    {
+        "label": "request",
+        "importPath": "flask",
+        "description": "flask",
+        "isExtraImport": true,
+        "detail": "flask",
+        "documentation": {}
+    },
+    {
+        "label": "redirect",
+        "importPath": "flask",
+        "description": "flask",
+        "isExtraImport": true,
+        "detail": "flask",
+        "documentation": {}
+    },
+    {
+        "label": "url_for",
+        "importPath": "flask",
+        "description": "flask",
+        "isExtraImport": true,
+        "detail": "flask",
+        "documentation": {}
+    },
+    {
+        "label": "flash",
+        "importPath": "flask",
+        "description": "flask",
+        "isExtraImport": true,
+        "detail": "flask",
+        "documentation": {}
+    },
+    {
+        "label": "session",
+        "importPath": "flask",
+        "description": "flask",
+        "isExtraImport": true,
+        "detail": "flask",
+        "documentation": {}
+    },
+    {
+        "label": "sqlite3",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "sqlite3",
+        "description": "sqlite3",
+        "detail": "sqlite3",
+        "documentation": {}
+    },
+    {
+        "label": "generate_password_hash",
+        "importPath": "werkzeug.security",
+        "description": "werkzeug.security",
+        "isExtraImport": true,
+        "detail": "werkzeug.security",
+        "documentation": {}
+    },
+    {
+        "label": "check_password_hash",
+        "importPath": "werkzeug.security",
+        "description": "werkzeug.security",
+        "isExtraImport": true,
+        "detail": "werkzeug.security",
+        "documentation": {}
+    },
+    {
+        "label": "wraps",
+        "importPath": "functools",
+        "description": "functools",
+        "isExtraImport": true,
+        "detail": "functools",
+        "documentation": {}
+    },
+    {
+        "label": "logging",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "logging",
+        "description": "logging",
+        "detail": "logging",
+        "documentation": {}
+    },
+    {
+        "label": "datetime",
+        "importPath": "datetime",
+        "description": "datetime",
+        "isExtraImport": true,
+        "detail": "datetime",
+        "documentation": {}
+    },
+    {
+        "label": "timedelta",
+        "importPath": "datetime",
+        "description": "datetime",
+        "isExtraImport": true,
+        "detail": "datetime",
+        "documentation": {}
+    },
+    {
+        "label": "get_db",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def get_db():\n    try:\n        db = sqlite3.connect('students.db')\n        db.row_factory = sqlite3.Row\n        return db\n    except Exception as e:\n        logging.error(f\"Database connection error: {str(e)}\")\n        raise\ndef init_db():\n    with app.app_context():",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "init_db",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def init_db():\n    with app.app_context():\n        db = get_db()\n        # Drop existing tables\n        db.execute('DROP TABLE IF EXISTS sessions')\n        db.execute('DROP TABLE IF EXISTS students')\n        # Create tables from schema\n        with app.open_resource('schema.sql', mode='r') as f:\n            db.cursor().executescript(f.read())\n        # Add admin user if it doesn't exist",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "index",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def index():\n    return render_template('index.html')\n# Login required decorator with error handling\ndef login_required(f):\n    @wraps(f)\n    def decorated_function(*args, **kwargs):\n        try:\n            if 'user_id' not in session:\n                flash('Please login first.', 'error')\n                return redirect(url_for('index'))",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "login_required",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def login_required(f):\n    @wraps(f)\n    def decorated_function(*args, **kwargs):\n        try:\n            if 'user_id' not in session:\n                flash('Please login first.', 'error')\n                return redirect(url_for('index'))\n            # Check if session is expired\n            if 'last_activity' in session:\n                last_activity = datetime.fromtimestamp(session['last_activity'])",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "login",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def login():\n    try:\n        username = request.form['username']\n        password = request.form['password']\n        db = get_db()\n        user = db.execute('SELECT * FROM students WHERE username = ?', (username,)).fetchone()\n        if user and check_password_hash(user['password'], password):\n            session.permanent = True\n            session['user_id'] = user['id']  # Store the internal database ID in the session\n            session['user_type'] = user['user_type']",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "lab_rules",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def lab_rules():\n    return render_template('lab_rules.html')\n@app.route('/edit-record')\n@login_required\ndef edit_record():\n    # Fetch the logged-in student's ID from the session\n    student_id = session.get('student_id')\n    if not student_id:\n        return redirect(url_for('login'))  # Redirect to login if not logged in\n    # Fetch the student's data from the database using the student_id",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "edit_record",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def edit_record():\n    # Fetch the logged-in student's ID from the session\n    student_id = session.get('student_id')\n    if not student_id:\n        return redirect(url_for('login'))  # Redirect to login if not logged in\n    # Fetch the student's data from the database using the student_id\n    db = get_db()\n    student = db.execute('SELECT * FROM students WHERE idno = ?', (student_id,)).fetchone()\n    if not student:\n        return \"Student not found\", 404",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "update_record",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def update_record():\n    # Fetch the logged-in student's ID from the session\n    student_id = session.get('student_id')\n    if not student_id:\n        return redirect(url_for('login'))  # Redirect to login if not logged in\n    # Fetch the student's data from the database\n    db = get_db()\n    student = db.execute('SELECT * FROM students WHERE idno = ?', (student_id,)).fetchone()\n    if not student:\n        return \"Student not found\", 404",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "dashboard",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def dashboard():\n    try:\n        return render_template('student_dashboard.html', \n                             student_name=session.get('student_name', 'Student'))\n    except Exception as e:\n        logging.error(f\"Dashboard error: {str(e)}\")\n        flash('Error loading dashboard.', 'error')\n        return redirect(url_for('index'))\n@app.route('/view-sessions')\n@login_required",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "view_sessions",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def view_sessions():\n    # TODO: Implement view sessions functionality\n    flash('View sessions feature coming soon!')\n    return redirect(url_for('dashboard'))\n# Route for the make-reservation page\n@app.route('/make-reservation')\ndef make_reservation():\n    return render_template('make_reservation.html')\n# Route for handling form submission\n@app.route('/submit-reservation', methods=['POST'])",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "make_reservation",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def make_reservation():\n    return render_template('make_reservation.html')\n# Route for handling form submission\n@app.route('/submit-reservation', methods=['POST'])\ndef submit_reservation():\n    # Fetch the logged-in student's ID and name from the session\n    student_id = session.get('student_id')\n    student_name = session.get('student_name')\n    if not student_id or not student_name:\n        return redirect(url_for('login'))  # Redirect to login if not logged in",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "submit_reservation",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def submit_reservation():\n    # Fetch the logged-in student's ID and name from the session\n    student_id = session.get('student_id')\n    student_name = session.get('student_name')\n    if not student_id or not student_name:\n        return redirect(url_for('login'))  # Redirect to login if not logged in\n    # Retrieve form data\n    date = request.form.get('date')\n    time = request.form.get('time')\n    lab = request.form.get('lab')",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "view_reservations",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def view_reservations():\n    # Fetch all reservations from the database\n    reservations = Reservation.query.all()\n    return render_template('view_reservations.html', reservations=reservations)\n@app.route('/logout', methods=['POST'])\ndef logout():\n    session.clear()\n    flash('You have been logged out.')\n    return redirect(url_for('index'))\n@app.route('/register', methods=['POST'])",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "logout",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def logout():\n    session.clear()\n    flash('You have been logged out.')\n    return redirect(url_for('index'))\n@app.route('/register', methods=['POST'])\ndef register():\n    try:\n        user_type = request.form['user_type']\n        hashed_password = generate_password_hash(request.form['password'])\n        db = get_db()",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "register",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def register():\n    try:\n        user_type = request.form['user_type']\n        hashed_password = generate_password_hash(request.form['password'])\n        db = get_db()\n        if user_type == 'staff':\n            # Staff registration\n            db.execute('''\n                INSERT INTO students (\n                    idno, lastname, firstname, middlename, ",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "page_not_found",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def page_not_found(e):\n    flash('Page not found.', 'error')\n    return redirect(url_for('dashboard'))\n@app.errorhandler(500)\ndef internal_server_error(e):\n    logging.error(f\"Internal server error: {str(e)}\")\n    flash('An internal server error occurred.', 'error')\n    return redirect(url_for('dashboard'))\n@app.before_request\ndef before_request():",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "internal_server_error",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def internal_server_error(e):\n    logging.error(f\"Internal server error: {str(e)}\")\n    flash('An internal server error occurred.', 'error')\n    return redirect(url_for('dashboard'))\n@app.before_request\ndef before_request():\n    # Clear session if user closed browser\n    if 'user_id' in session and 'last_activity' not in session:\n        session.clear()\n        flash('Session expired. Please login again.', 'warning')",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "before_request",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def before_request():\n    # Clear session if user closed browser\n    if 'user_id' in session and 'last_activity' not in session:\n        session.clear()\n        flash('Session expired. Please login again.', 'warning')\n        return redirect(url_for('index'))\n# Add after the get_db() function\ndef is_admin(user_id):\n    try:\n        db = get_db()",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "is_admin",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def is_admin(user_id):\n    try:\n        db = get_db()\n        user = db.execute('SELECT user_type FROM students WHERE id = ?', (user_id,)).fetchone()\n        return user and user['user_type'] == 'admin'\n    except Exception as e:\n        logging.error(f\"Error checking admin status: {str(e)}\")\n        return False\n# Add admin required decorator\ndef admin_required(f):",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "admin_required",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def admin_required(f):\n    @wraps(f)\n    def decorated_function(*args, **kwargs):\n        if not is_admin(session.get('user_id')):\n            flash('Admin access required.', 'error')\n            return redirect(url_for('dashboard'))\n        return f(*args, **kwargs)\n    return decorated_function\n# Add these new routes before the errorhandler routes\n@app.route('/admin/dashboard')",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "admin_dashboard",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def admin_dashboard():\n    try:\n        return render_template('admin/dashboard.html')\n    except Exception as e:\n        logging.error(f\"Admin dashboard error: {str(e)}\")\n        flash('Error loading admin dashboard.', 'error')\n        return redirect(url_for('dashboard'))\n@app.route('/admin/students')\n@login_required\n@admin_required",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "admin_students",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def admin_students():\n    try:\n        db = get_db()\n        students = db.execute('''\n            SELECT id, idno, lastname, firstname, middlename, \n                   course, year_level, email, username \n            FROM students WHERE user_type = 'student'\n        ''').fetchall()\n        return render_template('admin/students.html', students=students)\n    except Exception as e:",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "admin_active_sessions",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def admin_active_sessions():\n    try:\n        db = get_db()\n        active_sessions = db.execute('''\n            SELECT s.*, \n                   st.firstname, st.lastname, st.idno,\n                   st.course, st.year_level\n            FROM sessions s\n            JOIN students st ON s.student_id = st.id\n            WHERE s.end_time > datetime('now')",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "staff_required",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def staff_required(f):\n    @wraps(f)\n    def decorated_function(*args, **kwargs):\n        if session.get('user_type') != 'staff':\n            flash('Staff access required.', 'error')\n            return redirect(url_for('dashboard'))\n        return f(*args, **kwargs)\n    return decorated_function\n@app.route('/staff/dashboard')\n@login_required",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "staff_dashboard",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def staff_dashboard():\n    try:\n        return render_template('staff/dashboard.html')\n    except Exception as e:\n        logging.error(f\"Staff dashboard error: {str(e)}\")\n        flash('Error loading staff dashboard.', 'error')\n        return redirect(url_for('index'))\n@app.route('/staff/view-sessions')\n@login_required\n@staff_required",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "staff_view_sessions",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def staff_view_sessions():\n    try:\n        db = get_db()\n        active_sessions = db.execute('''\n            SELECT s.*, st.firstname, st.lastname, st.idno,\n                   st.course, st.year_level, s.purpose\n            FROM sessions s\n            JOIN students st ON s.student_id = st.id\n            WHERE s.end_time > datetime('now')\n            ORDER BY s.start_time DESC",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "staff_session_records",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def staff_session_records():\n    try:\n        db = get_db()\n        records = db.execute('''\n            SELECT s.*, st.firstname, st.lastname, st.idno,\n                   st.course, st.year_level, s.purpose\n            FROM sessions s\n            JOIN students st ON s.student_id = st.id\n            ORDER BY s.created_at DESC\n        ''').fetchall()",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "staff_generate_report",
+        "kind": 2,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "def staff_generate_report():\n    try:\n        year = request.args.get('year', datetime.now().year)\n        db = get_db()\n        report_data = db.execute('''\n            SELECT s.purpose, COUNT(*) as count,\n                   strftime('%m', s.reservation_date) as month\n            FROM sessions s\n            WHERE strftime('%Y', s.reservation_date) = ?\n            GROUP BY s.purpose, month",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "db",
+        "kind": 5,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "db = sqlite3.connect('students.db')\ndb = sqlite3.connect('users.db')\ndb.execute('PRAGMA journal_mode=WAL')\ndb.commit()\ncursor = db.cursor()\n# Configure logging\nlogging.basicConfig(\n    filename='error.log',\n    level=logging.ERROR,\n    format='%(asctime)s - %(levelname)s - %(message)s'",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "db",
+        "kind": 5,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "db = sqlite3.connect('users.db')\ndb.execute('PRAGMA journal_mode=WAL')\ndb.commit()\ncursor = db.cursor()\n# Configure logging\nlogging.basicConfig(\n    filename='error.log',\n    level=logging.ERROR,\n    format='%(asctime)s - %(levelname)s - %(message)s'\n)",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "cursor",
+        "kind": 5,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "cursor = db.cursor()\n# Configure logging\nlogging.basicConfig(\n    filename='error.log',\n    level=logging.ERROR,\n    format='%(asctime)s - %(levelname)s - %(message)s'\n)\napp = Flask(__name__, static_folder='static')\napp.secret_key = 'your_very_secure_secret_key_here'\napp.permanent_session_lifetime = timedelta(minutes=30)  # Session expires after 30 minutes",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "app = Flask(__name__, static_folder='static')\napp.secret_key = 'your_very_secure_secret_key_here'\napp.permanent_session_lifetime = timedelta(minutes=30)  # Session expires after 30 minutes\ndef get_db():\n    try:\n        db = sqlite3.connect('students.db')\n        db.row_factory = sqlite3.Row\n        return db\n    except Exception as e:\n        logging.error(f\"Database connection error: {str(e)}\")",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "app.secret_key",
+        "kind": 5,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "app.secret_key = 'your_very_secure_secret_key_here'\napp.permanent_session_lifetime = timedelta(minutes=30)  # Session expires after 30 minutes\ndef get_db():\n    try:\n        db = sqlite3.connect('students.db')\n        db.row_factory = sqlite3.Row\n        return db\n    except Exception as e:\n        logging.error(f\"Database connection error: {str(e)}\")\n        raise",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "app.permanent_session_lifetime",
+        "kind": 5,
+        "importPath": "app",
+        "description": "app",
+        "peekOfCode": "app.permanent_session_lifetime = timedelta(minutes=30)  # Session expires after 30 minutes\ndef get_db():\n    try:\n        db = sqlite3.connect('students.db')\n        db.row_factory = sqlite3.Row\n        return db\n    except Exception as e:\n        logging.error(f\"Database connection error: {str(e)}\")\n        raise\ndef init_db():",
+        "detail": "app",
+        "documentation": {}
+    },
+    {
+        "label": "get_user_by_username",
+        "kind": 2,
+        "importPath": "dbhelper",
+        "description": "dbhelper",
+        "peekOfCode": "def get_user_by_username(username):\n    \"\"\"Retrieve user from the database by username.\"\"\"\n    conn = sqlite3.connect('users.db')  # Connect to the database\n    cursor = conn.cursor()\n    cursor.execute('SELECT * FROM users WHERE username = ?', (username,))\n    user = cursor.fetchone()  # Fetch the first matching record\n    conn.close()  # Close the connection\n    return user\ndef validate_user(username, password):\n    \"\"\"Check if the provided username and password are correct.\"\"\"",
+        "detail": "dbhelper",
+        "documentation": {}
+    },
+    {
+        "label": "validate_user",
+        "kind": 2,
+        "importPath": "dbhelper",
+        "description": "dbhelper",
+        "peekOfCode": "def validate_user(username, password):\n    \"\"\"Check if the provided username and password are correct.\"\"\"\n    user = get_user_by_username(username)\n    if user and user[2] == password:  # user[2] is the password column\n        return True\n    return False",
+        "detail": "dbhelper",
+        "documentation": {}
+    }
+]
