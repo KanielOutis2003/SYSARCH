@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Announcements - CSS SIT-IN MONITORING SYSTEM</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-image: url('/static/uc.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-color: rgba(0, 0, 0, 0.5);
+            background-blend-mode: overlay;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #003366;
+        }
+
+        .user-info {
+            text-align: right;
+            color: #003366;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .profile-pic {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #003366;
+        }
+
+        .user-details {
+            text-align: right;
+        }
+
+        .back-btn {
+            background-color: #003366;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .back-btn:hover {
+            background-color: #004d99;
+        }
+
+        /* Announcements */
+        .announcements-section {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .announcement {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #003366;
+        }
+
+        .announcement-title {
+            color: #003366;
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .announcement-date {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .announcement-content {
+            color: #333;
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        /* Flash message styles */
+        .flash-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .flash-message {
+            background-color: #ffffff;
+            border-left: 4px solid;
+            padding: 15px 25px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: opacity 0.3s ease;
+        }
+
+        .flash-success {
+            border-left-color: #28a745;
+        }
+
+        .flash-error {
+            border-left-color: #dc3545;
+        }
+
+        .flash-warning {
+            border-left-color: #ffc107;
+        }
+
+        .flash-info {
+            border-left-color: #17a2b8;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Flash Messages Container -->
+    <div class="flash-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="dashboard-container">
+        <div class="header">
+            <div class="logo-section">
+                <img src="/static/CSS.png" alt="CSS Logo" class="logo">
+                <h1>Announcements</h1>
+            </div>
+            <div class="user-info">
+                <div class="user-details">
+                    <h3>{{ student.firstname }} {{ student.lastname }}</h3>
+                    <p>{{ student.idno }}</p>
+                    <a href="{{ url_for('student_dashboard') }}" class="back-btn">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="announcements-section">
+            <h2><i class="fas fa-bullhorn"></i> Important Announcements</h2>
+            
+            {% if announcements %}
+                {% for announcement in announcements %}
+                    <div class="announcement">
+                        <div class="announcement-title">{{ announcement.title }}</div>
+                        <div class="announcement-date">
+                            <i class="far fa-calendar-alt"></i> Posted on {{ announcement.created_at.strftime('%Y-%m-%d') }}
+                        </div>
+                        <div class="announcement-content">{{ announcement.content }}</div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="announcement">
+                    <div class="announcement-title">No Announcements</div>
+                    <div class="announcement-content">There are no announcements at this time. Check back later for updates.</div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // Auto-hide flash messages after 5 seconds
+        setTimeout(function() {
+            var flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(function(message) {
+                message.style.opacity = '0';
+                setTimeout(function() {
+                    message.style.display = 'none';
+                }, 500);
+            });
+        }, 5000);
+    </script>
+</body>
+</html> 

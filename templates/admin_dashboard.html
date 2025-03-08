@@ -589,9 +589,21 @@
                     <i class="fas fa-calendar-check"></i>
                     <span>Active Sessions</span>
                 </div>
+                <div class="nav-item" onclick="showTab('pending')">
+                    <i class="fas fa-clock"></i>
+                    <span>Pending Requests</span>
+                </div>
                 <div class="nav-item" onclick="showTab('students')">
                     <i class="fas fa-user-graduate"></i>
                     <span>Students</span>
+                </div>
+                <div class="nav-item" onclick="showTab('feedback')">
+                    <i class="fas fa-comment-alt"></i>
+                    <span>Feedback</span>
+                </div>
+                <div class="nav-item" onclick="showTab('announcements')">
+                    <i class="fas fa-bullhorn"></i>
+                    <span>Announcements</span>
                 </div>
                 <div class="nav-item" onclick="showTab('reports')">
                     <i class="fas fa-chart-bar"></i>
@@ -620,14 +632,55 @@
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-clock"></i>
-                    <h3>{{ (active_sessions|sum(attribute='duration'))|default(0) }}</h3>
-                    <p>Total Hours</p>
+                    <h3>{{ pending_sessions|length|default(0) }}</h3>
+                    <p>Pending Requests</p>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-laptop-code"></i>
-                    <h3>5</h3>
-                    <p>Lab Rooms</p>
+                    <h3>{{ current_sit_ins|length|default(0) }}</h3>
+                    <p>Current Sit-Ins</p>
                 </div>
+            </div>
+
+            <!-- Current Sit-Ins -->
+            <div class="content-section">
+                <h2>Current Sit-Ins</h2>
+                <table class="student-table">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            <th>Lab Room</th>
+                            <th>Check-In Time</th>
+                            <th>Duration</th>
+                            <th>Programming Language</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if current_sit_ins %}
+                            {% for session in current_sit_ins %}
+                                <tr>
+                                    <td>{{ session.idno }}</td>
+                                    <td>{{ session.lastname }}, {{ session.firstname }}</td>
+                                    <td>{{ session.lab_room }}</td>
+                                    <td>{{ session.check_in_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>{{ session.duration }} hour(s)</td>
+                                    <td>{{ session.programming_language|default('Not specified') }}</td>
+                                    <td class="action-buttons">
+                                        <form action="{{ url_for('check_out_student', session_id=session.id) }}" method="POST" style="display: inline;">
+                                            <button type="submit" class="action-btn edit-btn">Check Out</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" style="text-align: center;">No students currently sitting in</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
             </div>
 
             <!-- Recent Activity -->
@@ -643,13 +696,13 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% if active_sessions %}
-                            {% for session in active_sessions[:5] %}
+                        {% if recent_activity %}
+                            {% for activity in recent_activity %}
                                 <tr>
-                                    <td>{{ session.lastname }}, {{ session.firstname }}</td>
-                                    <td>Started a sit-in session</td>
-                                    <td>{{ session.lab_room }}</td>
-                                    <td>{{ session.date_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>{{ activity.lastname }}, {{ activity.firstname }}</td>
+                                    <td>{{ activity.action }}</td>
+                                    <td>{{ activity.lab_room }}</td>
+                                    <td>{{ activity.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
                                 </tr>
                             {% endfor %}
                         {% else %}
@@ -681,6 +734,7 @@
                             <th>Lab Room</th>
                             <th>Date & Time</th>
                             <th>Duration (hrs)</th>
+                            <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -704,16 +758,32 @@
                                     <td>{{ session.lab_room }}</td>
                                     <td>{{ session.date_time.strftime('%Y-%m-%d %H:%M') }}</td>
                                     <td>{{ session.duration }}</td>
+                                    <td>
+                                        {% if session.check_in_time %}
+                                            <span class="status-active">Checked In</span>
+                                        {% else %}
+                                            <span class="status-pending">Not Checked In</span>
+                                        {% endif %}
+                                    </td>
                                     <td class="action-buttons">
+                                        {% if not session.check_in_time %}
+                                            <form action="{{ url_for('check_in_student', session_id=session.id) }}" method="POST" style="display: inline;">
+                                                <button type="submit" class="action-btn view-btn">Check In</button>
+                                            </form>
+                                        {% else %}
+                                            <form action="{{ url_for('check_out_student', session_id=session.id) }}" method="POST" style="display: inline;">
+                                                <button type="submit" class="action-btn edit-btn">Check Out</button>
+                                            </form>
+                                        {% endif %}
                                         <form action="{{ url_for('complete_session', session_id=session.id) }}" method="POST" style="display: inline;">
-                                            <button type="submit" class="action-btn edit-btn">Mark Complete</button>
+                                            <button type="submit" class="action-btn delete-btn">End Session</button>
                                         </form>
                                     </td>
                                 </tr>
                             {% endfor %}
                         {% else %}
                             <tr>
-                                <td colspan="7" style="text-align: center;">No active sit-in sessions</td>
+                                <td colspan="8" style="text-align: center;">No active sit-in sessions</td>
                             </tr>
                         {% endif %}
                     </tbody>
@@ -721,72 +791,67 @@
             </div>
         </div>
 
-        <!-- Students Tab -->
-        <div id="students" class="tab-content">
+        <!-- Pending Requests Tab -->
+        <div id="pending" class="tab-content">
             <div class="content-section">
-                <h2>Student Management</h2>
+                <h2>Pending Session Requests</h2>
                 
                 <div class="search-bar">
-                    <input type="text" id="studentSearchInput" class="search-input" placeholder="Search by name, ID, or course...">
-                    <button class="search-btn" onclick="searchStudents()">Search</button>
+                    <input type="text" id="pendingSearchInput" class="search-input" placeholder="Search by name, ID, or lab room...">
+                    <button class="search-btn" onclick="searchPending()">Search</button>
                 </div>
                 
                 <table class="student-table">
                     <thead>
                         <tr>
-                            <th>Profile</th>
-                            <th>ID Number</th>
+                            <th>Student ID</th>
                             <th>Name</th>
                             <th>Course</th>
-                            <th>Sessions Used</th>
-                            <th>Max Sessions</th>
+                            <th>Lab Room</th>
+                            <th>Date & Time</th>
+                            <th>Duration (hrs)</th>
+                            <th>Programming Language</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% if students %}
-                            {% for student in students %}
+                        {% if pending_sessions %}
+                            {% for session in pending_sessions %}
                                 <tr>
+                                    <td>{{ session.idno }}</td>
+                                    <td>{{ session.lastname }}, {{ session.firstname }}</td>
                                     <td>
-                                        <img src="/static/profile_pictures/{{ student.profile_picture }}" alt="Profile" class="profile-pic">
-                                    </td>
-                                    <td>{{ student.idno }}</td>
-                                    <td>{{ student.lastname }}, {{ student.firstname }} {% if student.middlename %}{{ student.middlename[0] }}.{% endif %}</td>
-                                    <td>
-                                        {% if student.course == '1' %}
+                                        {% if session.course == '1' %}
                                             BSIT
-                                        {% elif student.course == '2' %}
+                                        {% elif session.course == '2' %}
                                             BSCS
-                                        {% elif student.course == '3' %}
+                                        {% elif session.course == '3' %}
                                             BSCE
                                         {% else %}
                                             Other
                                         {% endif %}
                                     </td>
-                                    <td>{{ student.sessions_used|default(0) }} / {{ student.max_sessions|default(25) }}</td>
-                                    <td>{{ student.max_sessions|default(25) }}</td>
+                                    <td>{{ session.lab_room }}</td>
+                                    <td>{{ session.date_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>{{ session.duration }}</td>
+                                    <td>{{ session.programming_language|default('Not specified') }}</td>
                                     <td class="action-buttons">
-                                        <button class="action-btn view-btn" onclick="viewStudent({{ student.id }})">View</button>
-                                        <button class="action-btn edit-btn" onclick="editStudent({{ student.id }})">Edit</button>
-                                        <button class="action-btn delete-btn" onclick="deleteStudent({{ student.id }})">Delete</button>
+                                        <form action="{{ url_for('approve_session', session_id=session.id) }}" method="POST" style="display: inline;">
+                                            <button type="submit" class="action-btn view-btn">Approve</button>
+                                        </form>
+                                        <form action="{{ url_for('reject_session', session_id=session.id) }}" method="POST" style="display: inline;">
+                                            <button type="submit" class="action-btn delete-btn">Reject</button>
+                                        </form>
                                     </td>
                                 </tr>
                             {% endfor %}
                         {% else %}
                             <tr>
-                                <td colspan="7" style="text-align: center;">No students found</td>
+                                <td colspan="8" style="text-align: center;">No pending session requests</td>
                             </tr>
                         {% endif %}
                     </tbody>
                 </table>
-                
-                <div class="pagination">
-                    <button class="page-btn">Previous</button>
-                    <button class="page-btn active">1</button>
-                    <button class="page-btn">2</button>
-                    <button class="page-btn">3</button>
-                    <button class="page-btn">Next</button>
-                </div>
             </div>
         </div>
 
@@ -834,35 +899,71 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>Laboratory 1</td>
+                                <td>Lab 524</td>
                                 <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 1')|list|length }}</td>
                                 <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 1')|sum(attribute='duration')|default(0) }}</td>
                                 <td>2:00 PM - 4:00 PM</td>
                             </tr>
                             <tr>
-                                <td>Laboratory 2</td>
+                                <td>Lab 526</td>
                                 <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 2')|list|length }}</td>
                                 <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 2')|sum(attribute='duration')|default(0) }}</td>
                                 <td>10:00 AM - 12:00 PM</td>
                             </tr>
                             <tr>
-                                <td>Laboratory 3</td>
+                                <td>Lab 528</td>
                                 <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 3')|list|length }}</td>
                                 <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 3')|sum(attribute='duration')|default(0) }}</td>
                                 <td>1:00 PM - 3:00 PM</td>
                             </tr>
                             <tr>
-                                <td>Laboratory 4</td>
+                                <td>Lab 530</td>
                                 <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 4')|list|length }}</td>
                                 <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 4')|sum(attribute='duration')|default(0) }}</td>
                                 <td>3:00 PM - 5:00 PM</td>
                             </tr>
                             <tr>
-                                <td>Laboratory 5</td>
+                                <td>Lab 532</td>
                                 <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 5')|list|length }}</td>
                                 <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 5')|sum(attribute='duration')|default(0) }}</td>
                                 <td>9:00 AM - 11:00 AM</td>
                             </tr>
+                            <tr>
+                                <td>Lab 534</td>
+                                <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 6')|list|length }}</td>
+                                <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 6')|sum(attribute='duration')|default(0) }}</td>
+                                <td>11:00 AM - 1:00 PM</td>
+                            </tr>
+                            <tr>
+                                <td>Lab 536</td>
+                                <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 7')|list|length }}</td>
+                                <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 7')|sum(attribute='duration')|default(0) }}</td>
+                                <td>1:00 PM - 3:00 PM</td>
+                            </tr>
+                            <tr>
+                                <td>Lab 538</td>
+                                <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 8')|list|length }}</td>
+                                <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 8')|sum(attribute='duration')|default(0) }}</td>
+                                <td>3:00 PM - 5:00 PM</td>
+                            </tr>
+                            <tr>
+                                <td>Lab 540</td>
+                                <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 9')|list|length }}</td>
+                                <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 9')|sum(attribute='duration')|default(0) }}</td>
+                                <td>5:00 PM - 7:00 PM</td>
+                            </tr>
+                            <tr>
+                                <td>Lab 542</td>
+                                <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 10')|list|length }}</td>
+                                <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 10')|sum(attribute='duration')|default(0) }}</td>
+                                <td>7:00 PM - 9:00 PM</td>
+                            </tr>
+                            <tr>
+                                <td>Lab 544</td>
+                                <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 11')|list|length }}</td>
+                                <td>{{ active_sessions|selectattr('lab_room', 'equalto', 'Lab 11')|sum(attribute='duration')|default(0) }}</td>
+                                <td>9:00 PM - 11:00 PM</td>
+                            </tr>                         
                         </tbody>
                     </table>
                     
@@ -932,6 +1033,152 @@
                     
                     <button type="button" class="btn-primary" onclick="saveSettings()">Save Settings</button>
                 </form>
+            </div>
+        </div>
+
+        <!-- Feedback Tab -->
+        <div id="feedback" class="tab-content">
+            <div class="content-section">
+                <h2>Student Feedback</h2>
+                
+                <div class="search-bar">
+                    <input type="text" id="feedbackSearchInput" class="search-input" placeholder="Search by student name or comments...">
+                    <button class="search-btn" onclick="searchFeedback()">Search</button>
+                </div>
+                
+                <!-- Feedback Statistics -->
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <i class="fas fa-star"></i>
+                        <h3>{{ feedback_stats.average_rating|default('0.0') }}</h3>
+                        <p>Average Rating</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-comment"></i>
+                        <h3>{{ feedback_stats.total_feedback|default(0) }}</h3>
+                        <p>Total Feedback</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-thumbs-up"></i>
+                        <h3>{{ feedback_stats.positive_feedback|default(0) }}</h3>
+                        <p>Positive Feedback</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-thumbs-down"></i>
+                        <h3>{{ feedback_stats.negative_feedback|default(0) }}</h3>
+                        <p>Negative Feedback</p>
+                    </div>
+                </div>
+                
+                <table class="student-table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Lab Room</th>
+                            <th>Date</th>
+                            <th>Rating</th>
+                            <th>Comments</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if feedback_list %}
+                            {% for feedback in feedback_list %}
+                                <tr>
+                                    <td>{{ feedback.lastname }}, {{ feedback.firstname }}</td>
+                                    <td>{{ feedback.lab_room }}</td>
+                                    <td>{{ feedback.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        {% for i in range(1, 6) %}
+                                            {% if i <= feedback.rating %}
+                                                <i class="fas fa-star" style="color: gold;"></i>
+                                            {% else %}
+                                                <i class="far fa-star" style="color: #ccc;"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    <td>{{ feedback.comments }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align: center;">No feedback submitted yet</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Announcements Tab -->
+        <div id="announcements" class="tab-content">
+            <div class="content-section">
+                <h2>Announcements</h2>
+                
+                <!-- Add Announcement Form -->
+                <div class="add-announcement-form" style="margin-bottom: 30px;">
+                    <h3>Add New Announcement</h3>
+                    <form action="{{ url_for('add_announcement') }}" method="POST">
+                        <div class="form-group">
+                            <label for="title">Title</label>
+                            <input type="text" name="title" id="title" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="content">Content</label>
+                            <textarea name="content" id="content" class="form-control" rows="5" required></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary">Post Announcement</button>
+                    </form>
+                </div>
+                
+                <!-- Announcements List -->
+                <h3>Current Announcements</h3>
+                <table class="student-table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Content</th>
+                            <th>Date Posted</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if announcements %}
+                            {% for announcement in announcements %}
+                                <tr>
+                                    <td>{{ announcement.title }}</td>
+                                    <td>{{ announcement.content|truncate(100) }}</td>
+                                    <td>{{ announcement.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        {% if announcement.is_active %}
+                                            <span class="status-active">Active</span>
+                                        {% else %}
+                                            <span class="status-inactive">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="action-buttons">
+                                        <form action="{{ url_for('toggle_announcement', announcement_id=announcement.id) }}" method="POST" style="display: inline;">
+                                            <button type="submit" class="action-btn edit-btn">
+                                                {% if announcement.is_active %}
+                                                    Deactivate
+                                                {% else %}
+                                                    Activate
+                                                {% endif %}
+                                            </button>
+                                        </form>
+                                        <form action="{{ url_for('delete_announcement', announcement_id=announcement.id) }}" method="POST" style="display: inline;">
+                                            <button type="submit" class="action-btn delete-btn" onclick="return confirm('Are you sure you want to delete this announcement?')">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align: center;">No announcements yet</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -1064,6 +1311,36 @@
         function searchSessions() {
             const searchTerm = document.getElementById('sessionSearchInput').value.toLowerCase();
             const rows = document.querySelectorAll('#sessions .student-table tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+        
+        // Search functionality for pending requests
+        function searchPending() {
+            const searchTerm = document.getElementById('pendingSearchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#pending .student-table tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+        
+        // Search functionality for feedback
+        function searchFeedback() {
+            const searchTerm = document.getElementById('feedbackSearchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#feedback .student-table tbody tr');
             
             rows.forEach(row => {
                 const text = row.textContent.toLowerCase();

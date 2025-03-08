@@ -93,7 +93,7 @@ def init_db():
             WHEN course IN ('1', '2', '3') THEN 30 
             ELSE 25 
         END
-        WHERE max_sessions IS NULL
+        WHERE max_sessions IS NULL OR (course IN ('1', '2', '3') AND max_sessions = 25)
         """)
         
         conn.commit()
@@ -120,9 +120,62 @@ def init_db():
         date_time DATETIME NOT NULL,
         duration INT NOT NULL,
         programming_language VARCHAR(50),
-        status VARCHAR(20) DEFAULT 'active',
+        status VARCHAR(20) DEFAULT 'pending',
+        check_in_time DATETIME,
+        check_out_time DATETIME,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+    )
+    ''')
+    
+    # Check if approval_status column exists in sessions table, add it if it doesn't
+    try:
+        cursor.execute("SHOW COLUMNS FROM sessions LIKE 'approval_status'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE sessions ADD COLUMN approval_status VARCHAR(20) DEFAULT 'pending'")
+        
+        # Check if programming_language column exists in sessions table, add it if it doesn't
+        cursor.execute("SHOW COLUMNS FROM sessions LIKE 'programming_language'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE sessions ADD COLUMN programming_language VARCHAR(50)")
+        
+        # Check if check_in_time column exists in sessions table, add it if it doesn't
+        cursor.execute("SHOW COLUMNS FROM sessions LIKE 'check_in_time'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE sessions ADD COLUMN check_in_time DATETIME")
+        
+        # Check if check_out_time column exists in sessions table, add it if it doesn't
+        cursor.execute("SHOW COLUMNS FROM sessions LIKE 'check_out_time'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE sessions ADD COLUMN check_out_time DATETIME")
+        
+        conn.commit()
+    except Exception as e:
+        print(f"Error checking/adding columns to sessions table: {str(e)}")
+        conn.rollback()
+    
+    # Create feedback table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS feedback (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        session_id INT NOT NULL,
+        student_id INT NOT NULL,
+        rating INT NOT NULL, /* 1-5 star rating */
+        comments TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+        FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+    )
+    ''')
+    
+    # Create announcements table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS announcements (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(100) NOT NULL,
+        content TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
     
@@ -204,7 +257,7 @@ def register():
         password = request.form['password']
         
         # Set max sessions based on course
-        # BSIT, BSCS, BSCE get 30 sessions, others get 25
+        # BSIT (1), BSCS (2), BSCE (3) get 30 sessions, others get 25
         max_sessions = 30 if course in ['1', '2', '3'] else 25
         
         # Hash the password
@@ -356,6 +409,19 @@ def student_dashboard():
         student['sessions_used'] = 0
         student['max_sessions'] = max_sessions
     
+    # Make sure BSIT, BSCS, BSCE students have 30 sessions
+    if student['course'] in ['1', '2', '3'] and student['max_sessions'] != 30:
+        cursor.execute("""
+        UPDATE students 
+        SET max_sessions = 30
+        WHERE id = %s
+        """, (student['id'],))
+        
+        conn.commit()
+        
+        # Update the student object
+        student['max_sessions'] = 30
+    
     # Get student's sessions
     cursor.execute("""
     SELECT * FROM sessions 
@@ -368,10 +434,38 @@ def student_dashboard():
     if sessions is None:
         sessions = []
     
+    # Get student's feedback
+    try:
+        cursor.execute("""
+        SELECT f.*, s.lab_room 
+        FROM feedback f
+        JOIN sessions s ON f.session_id = s.id
+        WHERE f.student_id = %s
+        ORDER BY f.created_at DESC
+        """, (session['user_id'],))
+        feedback_list = cursor.fetchall()
+    except:
+        feedback_list = []
+    
+    # Get active announcements
+    try:
+        cursor.execute("""
+        SELECT * FROM announcements 
+        WHERE is_active = TRUE 
+        ORDER BY created_at DESC
+        """)
+        announcements = cursor.fetchall()
+    except:
+        announcements = []
+    
     cursor.close()
     conn.close()
     
-    return render_template('student_dashboard.html', student=student, sessions=sessions)
+    return render_template('student_dashboard.html', 
+                          student=student, 
+                          sessions=sessions,
+                          feedback_list=feedback_list,
+                          announcements=announcements)
 
 @app.route('/admin-dashboard')
 @admin_required
@@ -388,20 +482,146 @@ def admin_dashboard():
     """)
     students = cursor.fetchall()
     
-    # Get current sit-in sessions
+    # Check if approval_status column exists in sessions table
+    try:
+        cursor.execute("SHOW COLUMNS FROM sessions LIKE 'approval_status'")
+        has_approval_status = cursor.fetchone() is not None
+    except:
+        has_approval_status = False
+    
+    # Get active sessions (approved but not completed)
+    if has_approval_status:
+        cursor.execute("""
+        SELECT s.*, st.firstname, st.lastname, st.idno, st.course
+        FROM sessions s
+        JOIN students st ON s.student_id = st.id
+        WHERE s.status = 'active' AND s.approval_status = 'approved'
+        ORDER BY s.date_time DESC
+        """)
+    else:
+        cursor.execute("""
+        SELECT s.*, st.firstname, st.lastname, st.idno, st.course
+        FROM sessions s
+        JOIN students st ON s.student_id = st.id
+        WHERE s.status = 'active'
+        ORDER BY s.date_time DESC
+        """)
+    active_sessions = cursor.fetchall()
+    
+    # Get pending session requests
+    if has_approval_status:
+        cursor.execute("""
+        SELECT s.*, st.firstname, st.lastname, st.idno, st.course
+        FROM sessions s
+        JOIN students st ON s.student_id = st.id
+        WHERE s.approval_status = 'pending'
+        ORDER BY s.date_time ASC
+        """)
+    else:
+        cursor.execute("""
+        SELECT s.*, st.firstname, st.lastname, st.idno, st.course
+        FROM sessions s
+        JOIN students st ON s.student_id = st.id
+        WHERE s.status = 'pending'
+        ORDER BY s.date_time ASC
+        """)
+    pending_sessions = cursor.fetchall()
+    
+    # Get current sit-ins (checked in but not checked out)
     cursor.execute("""
     SELECT s.*, st.firstname, st.lastname, st.idno, st.course
     FROM sessions s
     JOIN students st ON s.student_id = st.id
-    WHERE s.status = 'active'
-    ORDER BY s.date_time DESC
+    WHERE s.status = 'active' AND s.check_in_time IS NOT NULL AND s.check_out_time IS NULL
+    ORDER BY s.check_in_time DESC
     """)
-    active_sessions = cursor.fetchall()
+    current_sit_ins = cursor.fetchall()
+    
+    # Get recent activity (last 10 events)
+    cursor.execute("""
+    (SELECT 
+        s.id, 
+        st.firstname, 
+        st.lastname, 
+        s.lab_room, 
+        'Requested a session' as action, 
+        s.created_at as timestamp
+    FROM sessions s
+    JOIN students st ON s.student_id = st.id
+    ORDER BY s.created_at DESC
+    LIMIT 5)
+    
+    UNION
+    
+    (SELECT 
+        s.id, 
+        st.firstname, 
+        st.lastname, 
+        s.lab_room, 
+        'Checked in' as action, 
+        s.check_in_time as timestamp
+    FROM sessions s
+    JOIN students st ON s.student_id = st.id
+    WHERE s.check_in_time IS NOT NULL
+    ORDER BY s.check_in_time DESC
+    LIMIT 5)
+    
+    ORDER BY timestamp DESC
+    LIMIT 10
+    """)
+    recent_activity = cursor.fetchall()
+    
+    # Get feedback statistics
+    try:
+        cursor.execute("""
+        SELECT 
+            COUNT(*) as total_feedback,
+            AVG(rating) as average_rating,
+            SUM(CASE WHEN rating >= 4 THEN 1 ELSE 0 END) as positive_feedback,
+            SUM(CASE WHEN rating <= 2 THEN 1 ELSE 0 END) as negative_feedback
+        FROM feedback
+        """)
+        feedback_stats = cursor.fetchone()
+    except:
+        feedback_stats = {
+            'total_feedback': 0,
+            'average_rating': 0,
+            'positive_feedback': 0,
+            'negative_feedback': 0
+        }
+    
+    # Get feedback list with student and session details
+    try:
+        cursor.execute("""
+        SELECT f.*, s.lab_room, st.firstname, st.lastname
+        FROM feedback f
+        JOIN sessions s ON f.session_id = s.id
+        JOIN students st ON f.student_id = st.id
+        ORDER BY f.created_at DESC
+        """)
+        feedback_list = cursor.fetchall()
+    except:
+        feedback_list = []
+    
+    # Get announcements
+    try:
+        cursor.execute("SELECT * FROM announcements ORDER BY created_at DESC")
+        announcements = cursor.fetchall()
+    except:
+        announcements = []
     
     cursor.close()
     conn.close()
     
-    return render_template('admin_dashboard.html', students=students, active_sessions=active_sessions)
+    return render_template('admin_dashboard.html', 
+                          students=students, 
+                          active_sessions=active_sessions,
+                          pending_sessions=pending_sessions,
+                          current_sit_ins=current_sit_ins,
+                          recent_activity=recent_activity,
+                          feedback_stats=feedback_stats,
+                          feedback_list=feedback_list,
+                          announcements=announcements)
 
 @app.route('/edit-profile', methods=['GET', 'POST'])
 @login_required
@@ -500,20 +720,40 @@ def add_session():
             flash('You have used all your available sessions', 'error')
             return redirect(url_for('student_dashboard'))
         
-        # Add new session
-        cursor.execute("""
-        INSERT INTO sessions (student_id, lab_room, date_time, duration, programming_language, status)
-        VALUES (%s, %s, %s, %s, %s, %s)
-        """, (session['user_id'], lab_room, date_time, duration, programming_language, 'active'))
+        # Check if programming_language column exists
+        cursor.execute("SHOW COLUMNS FROM sessions LIKE 'programming_language'")
+        has_programming_language = cursor.fetchone() is not None
         
-        # Update sessions used
-        cursor.execute("""
-        UPDATE students SET sessions_used = sessions_used + 1
-        WHERE id = %s
-        """, (session['user_id'],))
+        # Check if approval_status column exists
+        cursor.execute("SHOW COLUMNS FROM sessions LIKE 'approval_status'")
+        has_approval_status = cursor.fetchone() is not None
+        
+        # Add new session with pending status
+        if has_programming_language and has_approval_status:
+            cursor.execute("""
+            INSERT INTO sessions (student_id, lab_room, date_time, duration, programming_language, status, approval_status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (session['user_id'], lab_room, date_time, duration, programming_language, 'pending', 'pending'))
+        elif has_approval_status:
+            cursor.execute("""
+            INSERT INTO sessions (student_id, lab_room, date_time, duration, status, approval_status)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """, (session['user_id'], lab_room, date_time, duration, 'pending', 'pending'))
+        elif has_programming_language:
+            cursor.execute("""
+            INSERT INTO sessions (student_id, lab_room, date_time, duration, programming_language, status)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """, (session['user_id'], lab_room, date_time, duration, programming_language, 'pending'))
+        else:
+            cursor.execute("""
+            INSERT INTO sessions (student_id, lab_room, date_time, duration, status)
+            VALUES (%s, %s, %s, %s, %s)
+            """, (session['user_id'], lab_room, date_time, duration, 'pending'))
+        
+        # Note: We don't increment sessions_used until the session is approved
         
         conn.commit()
-        flash('Session added successfully', 'success')
+        flash('Session request submitted successfully. Waiting for admin approval.', 'success')
         
     except Exception as e:
         conn.rollback()
@@ -687,6 +927,319 @@ def get_student_info(student_id):
     finally:
         cursor.close()
         conn.close()
+
+@app.route('/admin/approve-session/<int:session_id>', methods=['POST'])
+@admin_required
+def approve_session(session_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        # Get session information
+        cursor.execute("SELECT * FROM sessions WHERE id = %s", (session_id,))
+        session_data = cursor.fetchone()
+        
+        if not session_data:
+            flash('Session not found', 'error')
+            return redirect(url_for('admin_dashboard'))
+        
+        # Update session status to approved
+        cursor.execute("""
+        UPDATE sessions 
+        SET approval_status = 'approved', status = 'active'
+        WHERE id = %s
+        """, (session_id,))
+        
+        # Increment sessions_used for the student
+        cursor.execute("""
+        UPDATE students 
+        SET sessions_used = sessions_used + 1
+        WHERE id = %s
+        """, (session_data['student_id'],))
+        
+        conn.commit()
+        flash('Session approved successfully', 'success')
+        
+    except Exception as e:
+        conn.rollback()
+        flash(f'Failed to approve session: {str(e)}', 'error')
+        
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/reject-session/<int:session_id>', methods=['POST'])
+@admin_required
+def reject_session(session_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Update session status to rejected
+        cursor.execute("""
+        UPDATE sessions 
+        SET approval_status = 'rejected', status = 'cancelled'
+        WHERE id = %s
+        """, (session_id,))
+        
+        conn.commit()
+        flash('Session rejected', 'success')
+        
+    except Exception as e:
+        conn.rollback()
+        flash(f'Failed to reject session: {str(e)}', 'error')
+        
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/check-in/<int:session_id>', methods=['POST'])
+@admin_required
+def check_in_student(session_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Set check-in time to current time
+        cursor.execute("""
+        UPDATE sessions 
+        SET check_in_time = NOW()
+        WHERE id = %s
+        """, (session_id,))
+        
+        conn.commit()
+        flash('Student checked in successfully', 'success')
+        
+    except Exception as e:
+        conn.rollback()
+        flash(f'Failed to check in student: {str(e)}', 'error')
+        
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/check-out/<int:session_id>', methods=['POST'])
+@admin_required
+def check_out_student(session_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Set check-out time to current time and mark session as completed
+        cursor.execute("""
+        UPDATE sessions 
+        SET check_out_time = NOW(), status = 'completed'
+        WHERE id = %s
+        """, (session_id,))
+        
+        conn.commit()
+        flash('Student checked out successfully', 'success')
+        
+    except Exception as e:
+        conn.rollback()
+        flash(f'Failed to check out student: {str(e)}', 'error')
+        
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/submit-feedback/<int:session_id>', methods=['POST'])
+@login_required
+def submit_feedback(session_id):
+    if session.get('user_type') != 'student':
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
+    
+    rating = request.form.get('rating')
+    comments = request.form.get('comments', '')
+    
+    if not rating or not rating.isdigit() or int(rating) < 1 or int(rating) > 5:
+        flash('Please provide a valid rating (1-5)', 'error')
+        return redirect(url_for('student_dashboard'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Check if session belongs to the student
+        cursor.execute("""
+        SELECT * FROM sessions 
+        WHERE id = %s AND student_id = %s
+        """, (session_id, session['user_id']))
+        
+        session_data = cursor.fetchone()
+        if not session_data:
+            flash('Session not found or not authorized', 'error')
+            return redirect(url_for('student_dashboard'))
+        
+        # Check if feedback already exists
+        cursor.execute("""
+        SELECT * FROM feedback 
+        WHERE session_id = %s AND student_id = %s
+        """, (session_id, session['user_id']))
+        
+        existing_feedback = cursor.fetchone()
+        if existing_feedback:
+            # Update existing feedback
+            cursor.execute("""
+            UPDATE feedback 
+            SET rating = %s, comments = %s
+            WHERE session_id = %s AND student_id = %s
+            """, (rating, comments, session_id, session['user_id']))
+            flash('Feedback updated successfully', 'success')
+        else:
+            # Insert new feedback
+            cursor.execute("""
+            INSERT INTO feedback (session_id, student_id, rating, comments)
+            VALUES (%s, %s, %s, %s)
+            """, (session_id, session['user_id'], rating, comments))
+            flash('Feedback submitted successfully', 'success')
+        
+        conn.commit()
+        
+    except Exception as e:
+        conn.rollback()
+        flash(f'Failed to submit feedback: {str(e)}', 'error')
+        
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for('student_dashboard'))
+
+@app.route('/admin/announcements', methods=['GET'])
+@admin_required
+def view_announcements():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT * FROM announcements ORDER BY created_at DESC")
+    announcements = cursor.fetchall()
+    
+    cursor.close()
+    conn.close()
+    
+    return render_template('admin_announcements.html', announcements=announcements)
+
+@app.route('/admin/add-announcement', methods=['POST'])
+@admin_required
+def add_announcement():
+    title = request.form.get('title')
+    content = request.form.get('content')
+    
+    if not title or not content:
+        flash('Title and content are required', 'error')
+        return redirect(url_for('view_announcements'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+        INSERT INTO announcements (title, content)
+        VALUES (%s, %s)
+        """, (title, content))
+        
+        conn.commit()
+        flash('Announcement added successfully', 'success')
+        
+    except Exception as e:
+        conn.rollback()
+        flash(f'Failed to add announcement: {str(e)}', 'error')
+        
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for('view_announcements'))
+
+@app.route('/admin/toggle-announcement/<int:announcement_id>', methods=['POST'])
+@admin_required
+def toggle_announcement(announcement_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+        UPDATE announcements 
+        SET is_active = NOT is_active
+        WHERE id = %s
+        """, (announcement_id,))
+        
+        conn.commit()
+        flash('Announcement status updated', 'success')
+        
+    except Exception as e:
+        conn.rollback()
+        flash(f'Failed to update announcement: {str(e)}', 'error')
+        
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for('view_announcements'))
+
+@app.route('/admin/delete-announcement/<int:announcement_id>', methods=['POST'])
+@admin_required
+def delete_announcement(announcement_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("DELETE FROM announcements WHERE id = %s", (announcement_id,))
+        
+        conn.commit()
+        flash('Announcement deleted successfully', 'success')
+        
+    except Exception as e:
+        conn.rollback()
+        flash(f'Failed to delete announcement: {str(e)}', 'error')
+        
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for('view_announcements'))
+
+@app.route('/student/announcements', methods=['GET'])
+@login_required
+def student_announcements():
+    if session.get('user_type') != 'student':
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Get student information
+    cursor.execute("SELECT * FROM students WHERE id = %s", (session['user_id'],))
+    student = cursor.fetchone()
+    
+    if not student:
+        flash('Student not found', 'error')
+        cursor.close()
+        conn.close()
+        return redirect(url_for('logout'))
+    
+    # Get active announcements
+    try:
+        cursor.execute("SELECT * FROM announcements WHERE is_active = TRUE ORDER BY created_at DESC")
+        announcements = cursor.fetchall()
+    except:
+        announcements = []
+    
+    cursor.close()
+    conn.close()
+    
+    return render_template('student_announcements.html', student=student, announcements=announcements)
 
 # Make sure to run init_db() when the app starts
 with app.app_context():

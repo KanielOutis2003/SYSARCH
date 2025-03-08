@@ -323,6 +323,86 @@
         .btn-primary:hover {
             background-color: #004d99;
         }
+
+        /* Announcements */
+        .announcements-section {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .announcement {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #003366;
+        }
+
+        .announcement-title {
+            color: #003366;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .announcement-date {
+            color: #6c757d;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .announcement-content {
+            color: #333;
+            line-height: 1.5;
+        }
+
+        /* Feedback form */
+        .feedback-form {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .star-rating {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .star-rating input {
+            display: none;
+        }
+
+        .star-rating label {
+            cursor: pointer;
+            font-size: 24px;
+            color: #ccc;
+        }
+
+        .star-rating label:hover,
+        .star-rating label:hover ~ label,
+        .star-rating input:checked ~ label {
+            color: gold;
+        }
+
+        .feedback-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .feedback-btn:hover {
+            background-color: #218838;
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
@@ -447,6 +527,22 @@
                     <p>View your sit-in session history</p>
                 </div>
             </a>
+
+            <a href="{{ url_for('student_announcements') }}" style="text-decoration: none;">
+                <div class="menu-item">
+                    <i class="fas fa-bullhorn"></i>
+                    <h3>Announcements</h3>
+                    <p>View important announcements</p>
+                </div>
+            </a>
+
+            <a href="#feedback-section" style="text-decoration: none;">
+                <div class="menu-item">
+                    <i class="fas fa-comment-alt"></i>
+                    <h3>Feedback</h3>
+                    <p>Provide feedback on your sessions</p>
+                </div>
+            </a>
         </div>
 
         <!-- Add Session Form (Hidden by default) -->
@@ -459,11 +555,17 @@
                         <label for="lab_room">Laboratory Room</label>
                         <select name="lab_room" id="lab_room" class="form-control" required>
                             <option value="">Select Laboratory Room</option>
-                            <option value="Lab 1">Laboratory 1</option>
-                            <option value="Lab 2">Laboratory 2</option>
-                            <option value="Lab 3">Laboratory 3</option>
-                            <option value="Lab 4">Laboratory 4</option>
-                            <option value="Lab 5">Laboratory 5</option>
+                            <option value="Lab 1">Lab 524</option>
+                            <option value="Lab 2">Lab 526</option>
+                            <option value="Lab 3">Lab 528</option>
+                            <option value="Lab 4">Lab 530</option>
+                            <option value="Lab 5">Lab 532</option>
+                            <option value="Lab 6">Lab 534</option>
+                            <option value="Lab 7">Lab 536</option>
+                            <option value="Lab 8">Lab 538</option>
+                            <option value="Lab 9">Lab 540</option>
+                            <option value="Lab 10">Lab 542</option>
+                            <option value="Lab 11">Lab 544</option>
                         </select>
                     </div>
                     
@@ -506,6 +608,23 @@
             {% endif %}
         </div>
 
+        <!-- Announcements Section -->
+        <div id="announcements-section" class="announcements-section">
+            <h2>Announcements</h2>
+            
+            {% if announcements %}
+                {% for announcement in announcements %}
+                    <div class="announcement">
+                        <div class="announcement-title">{{ announcement.title }}</div>
+                        <div class="announcement-date">Posted on {{ announcement.created_at.strftime('%Y-%m-%d') }}</div>
+                        <div class="announcement-content">{{ announcement.content }}</div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No announcements at this time.</p>
+            {% endif %}
+        </div>
+
         <!-- Sessions Section -->
         <div id="sessions-section" class="sessions-section">
             <h2>Your Sit-In Sessions</h2>
@@ -533,6 +652,8 @@
                                         <span class="status-active">Active</span>
                                     {% elif session.status == 'completed' %}
                                         <span class="status-completed">Completed</span>
+                                    {% elif session.status == 'pending' %}
+                                        <span class="status-pending">Pending Approval</span>
                                     {% else %}
                                         <span class="status-cancelled">Cancelled</span>
                                     {% endif %}
@@ -543,16 +664,89 @@
                                         <form action="{{ url_for('cancel_session', session_id=session.id) }}" method="POST" style="display: inline;">
                                             <button type="submit" class="action-btn cancel-btn">Cancel</button>
                                         </form>
+                                    {% elif session.status == 'completed' %}
+                                        <button class="action-btn feedback-btn" onclick="showFeedbackForm({{ session.id }})">Feedback</button>
+                                    {% elif session.status == 'pending' %}
+                                        <span>Awaiting approval</span>
                                     {% else %}
                                         -
                                     {% endif %}
                                 </td>
                             </tr>
+                            {% if session.status == 'completed' %}
+                                <tr id="feedback-row-{{ session.id }}" style="display: none;">
+                                    <td colspan="6">
+                                        <div class="feedback-form">
+                                            <h3>Provide Feedback</h3>
+                                            <form action="{{ url_for('submit_feedback', session_id=session.id) }}" method="POST">
+                                                <div class="form-group">
+                                                    <label>Rating</label>
+                                                    <div class="star-rating">
+                                                        <input type="radio" id="star5-{{ session.id }}" name="rating" value="5" />
+                                                        <label for="star5-{{ session.id }}"><i class="fas fa-star"></i></label>
+                                                        <input type="radio" id="star4-{{ session.id }}" name="rating" value="4" />
+                                                        <label for="star4-{{ session.id }}"><i class="fas fa-star"></i></label>
+                                                        <input type="radio" id="star3-{{ session.id }}" name="rating" value="3" />
+                                                        <label for="star3-{{ session.id }}"><i class="fas fa-star"></i></label>
+                                                        <input type="radio" id="star2-{{ session.id }}" name="rating" value="2" />
+                                                        <label for="star2-{{ session.id }}"><i class="fas fa-star"></i></label>
+                                                        <input type="radio" id="star1-{{ session.id }}" name="rating" value="1" />
+                                                        <label for="star1-{{ session.id }}"><i class="fas fa-star"></i></label>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="comments-{{ session.id }}">Comments</label>
+                                                    <textarea id="comments-{{ session.id }}" name="comments" class="form-control" rows="3" placeholder="Share your experience..."></textarea>
+                                                </div>
+                                                <button type="submit" class="btn-primary">Submit Feedback</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>
             {% else %}
                 <p>You have no sit-in sessions yet. Use the "Add Sit-In Session" option to schedule your first session.</p>
+            {% endif %}
+        </div>
+
+        <!-- Feedback Section -->
+        <div id="feedback-section" class="sessions-section">
+            <h2>Your Feedback</h2>
+            
+            {% if feedback_list %}
+                <table class="sessions-table">
+                    <thead>
+                        <tr>
+                            <th>Lab Room</th>
+                            <th>Date</th>
+                            <th>Rating</th>
+                            <th>Comments</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for feedback in feedback_list %}
+                            <tr>
+                                <td>{{ feedback.lab_room }}</td>
+                                <td>{{ feedback.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    {% for i in range(1, 6) %}
+                                        {% if i <= feedback.rating %}
+                                            <i class="fas fa-star" style="color: gold;"></i>
+                                        {% else %}
+                                            <i class="far fa-star" style="color: #ccc;"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </td>
+                                <td>{{ feedback.comments }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>You haven't provided any feedback yet. After completing a session, you can provide feedback to help us improve.</p>
             {% endif %}
         </div>
     </div>
@@ -590,6 +784,16 @@
                 form.scrollIntoView({ behavior: 'smooth' });
             } else {
                 form.style.display = 'none';
+            }
+        }
+        
+        // Show feedback form
+        function showFeedbackForm(sessionId) {
+            var feedbackRow = document.getElementById('feedback-row-' + sessionId);
+            if (feedbackRow.style.display === 'none') {
+                feedbackRow.style.display = 'table-row';
+            } else {
+                feedbackRow.style.display = 'none';
             }
         }
         

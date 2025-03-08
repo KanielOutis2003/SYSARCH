@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Personal Information - CSS SIT-IN MONITORING SYSTEM</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-image: url('/static/uc.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-color: rgba(0, 0, 0, 0.5);
+            background-blend-mode: overlay;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .edit-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #003366;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #003366;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            height: 100px;
+        }
+
+        .form-actions {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .form-actions button {
+            background-color: #003366;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+        }
+
+        .form-actions button:hover {
+            background-color: #002244;
+        }
+
+        .back-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #dc3545;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="edit-container">
+        <h1>Edit Personal Information</h1>
+
+        <!-- Edit Record Form -->
+        <form action="{{ url_for('update_record') }}" method="POST" enctype="multipart/form-data">
+            <!-- First Name -->
+            <div class="form-group">
+                <label for="first-name">First Name</label>
+                <input type="text" id="first-name" name="first_name" value="{{ student['firstname'] }}" required>
+            </div>
+
+            <!-- Last Name -->
+            <div class="form-group">
+                <label for="last-name">Last Name</label>
+                <input type="text" id="last-name" name="last_name" value="{{ student['lastname'] }}" required>
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" value="{{ student['email'] }}" required>
+            </div>
+
+            <!-- Course -->
+            <div class="form-group">
+                <label for="course">Course</label>
+                <select id="course" name="course" required>
+                    <option value="BSIT" {% if student['course'] == 'BSIT' %}selected{% endif %}>Bachelor of Science in Information Technology</option>
+                    <option value="BSCS" {% if student['course'] == 'BSCS' %}selected{% endif %}>Bachelor of Science in Computer Science</option>
+                    <option value="BSIS" {% if student['course'] == 'BSIS' %}selected{% endif %}>Bachelor of Science in Information Systems</option>
+                </select>
+            </div>
+
+            <!-- Year Level -->
+            <div class="form-group">
+                <label for="year-level">Year Level</label>
+                <select id="year-level" name="year_level" required>
+                    <option value="1" {% if student['year_level'] == '1' %}selected{% endif %}>1st Year</option>
+                    <option value="2" {% if student['year_level'] == '2' %}selected{% endif %}>2nd Year</option>
+                    <option value="3" {% if student['year_level'] == '3' %}selected{% endif %}>3rd Year</option>
+                    <option value="4" {% if student['year_level'] == '4' %}selected{% endif %}>4th Year</option>
+                </select>
+            </div>
+
+            <!-- Profile Picture -->
+            <div class="form-group">
+                <label for="profile-picture">Profile Picture</label>
+                <input type="file" id="profile-picture" name="profile_picture" accept="image/*">
+                {% if student['profile_picture'] %}
+                    <img src="{{ url_for('static', filename=student['profile_picture']) }}" alt="Profile Picture" style="width: 100px; height: auto; margin-top: 10px;">
+                {% endif %}
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <button type="submit">Save Changes</button>
+            </div>
+        </form>
+
+        <!-- View Remaining Session -->
+        <div class="form-group">
+            <h2>View Remaining Session</h2>
+            <p>Your remaining session time is: <strong>{{ remaining_session_time }}</strong></p>
+        </div>
+
+        <!-- Sit-In History -->
+        <div class="form-group">
+            <h2>Sit-In History</h2>
+            <ul>
+                {% for session in sit_in_history %}
+                    <li>{{ session.date }} - {{ session.lab }} - {{ session.purpose }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Back to Dashboard Button -->
+        <a href="/dashboard" class="back-btn">Back to Dashboard</a>
+    </div>
+</body>
+</html>
