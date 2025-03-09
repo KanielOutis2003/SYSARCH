@@ -93,7 +93,7 @@ def init_db():
             WHEN course IN ('1', '2', '3') THEN 30 
             ELSE 25 
         END
-        WHERE max_sessions IS NULL OR (course IN ('1', '2', '3') AND max_sessions = 25)
+        WHERE max_sessions IS NULL OR (course IN ('1', '2', '3') AND max_sessions = 25) OR (course NOT IN ('1', '2', '3') AND max_sessions = 30)
         """)
         
         conn.commit()
@@ -120,6 +120,7 @@ def init_db():
         date_time DATETIME NOT NULL,
         duration INT NOT NULL,
         programming_language VARCHAR(50),
+        purpose TEXT,
         status VARCHAR(20) DEFAULT 'pending',
         check_in_time DATETIME,
         check_out_time DATETIME,
@@ -138,6 +139,11 @@ def init_db():
         cursor.execute("SHOW COLUMNS FROM sessions LIKE 'programming_language'")
         if not cursor.fetchone():
             cursor.execute("ALTER TABLE sessions ADD COLUMN programming_language VARCHAR(50)")
+        
+        # Check if purpose column exists in sessions table, add it if it doesn't
+        cursor.execute("SHOW COLUMNS FROM sessions LIKE 'purpose'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE sessions ADD COLUMN purpose TEXT")
         
         # Check if check_in_time column exists in sessions table, add it if it doesn't
         cursor.execute("SHOW COLUMNS FROM sessions LIKE 'check_in_time'")
@@ -272,12 +278,25 @@ def register():
             cursor = conn.cursor()
             
             # Check if username or email already exists
-            cursor.execute("SELECT * FROM students WHERE username = %s OR email = %s OR idno = %s", 
-                          (username, email, idno))
-            existing_user = cursor.fetchone()
+            cursor.execute("SELECT * FROM students WHERE username = %s", (username,))
+            existing_username = cursor.fetchone()
             
-            if existing_user:
-                flash('Username, email, or ID number already exists', 'error')
+            cursor.execute("SELECT * FROM students WHERE email = %s", (email,))
+            existing_email = cursor.fetchone()
+            
+            cursor.execute("SELECT * FROM students WHERE idno = %s", (idno,))
+            existing_idno = cursor.fetchone()
+            
+            if existing_username:
+                flash('Username already exists. Please choose a different username.', 'error')
+                return redirect(url_for('index'))
+            
+            if existing_email:
+                flash('Email already exists. Please use a different email address.', 'error')
+                return redirect(url_for('index'))
+            
+            if existing_idno:
+                flash('ID number already exists. Please check your ID number.', 'error')
                 return redirect(url_for('index'))
             
             # Insert new student
@@ -318,6 +337,9 @@ def login():
                 session['user_type'] = 'admin'
                 flash('Welcome, Admin!', 'success')
                 return redirect(url_for('admin_dashboard'))
+            else:
+                flash('Invalid admin credentials', 'error')
+                return redirect(url_for('index'))
         
         # Check if it's a student login
         cursor.execute("SELECT * FROM students WHERE username = %s", (username,))
@@ -571,6 +593,67 @@ def admin_dashboard():
     """)
     recent_activity = cursor.fetchall()
     
+    # Get programming language statistics
+    try:
+        cursor.execute("""
+        SELECT 
+            programming_language,
+            COUNT(*) as count,
+            (COUNT(*) * 100.0 / (SELECT COUNT(*) FROM sessions WHERE programming_language IS NOT NULL)) as percentage
+        FROM sessions
+        WHERE programming_language IS NOT NULL
+        GROUP BY programming_language
+        ORDER BY count DESC
+        """)
+        language_stats = cursor.fetchall()
+        
+        # Ensure we have data for all default languages
+        default_languages = ['PHP', 'Java', 'Python', 'JavaScript', 'C++', 'C#', 'Ruby', 'Swift']
+        existing_languages = [lang['programming_language'] for lang in language_stats]
+        
+        # Add missing languages with count 0
+        for lang in default_languages:
+            if lang not in existing_languages:
+                language_stats.append({
+                    'programming_language': lang,
+                    'count': 0,
+                    'percentage': 0
+                })
+    except Exception as e:
+        print(f"Error getting language stats: {str(e)}")
+        language_stats = []
+    
+    # Get lab room usage statistics
+    try:
+        cursor.execute("""
+        SELECT 
+            lab_room,
+            COUNT(*) as count,
+            (COUNT(*) * 100.0 / (SELECT COUNT(*) FROM sessions)) as percentage,
+            SUM(duration) as total_hours
+        FROM sessions
+        GROUP BY lab_room
+        ORDER BY count DESC
+        """)
+        lab_stats = cursor.fetchall()
+        
+        # Ensure we have data for all lab rooms
+        default_labs = ['Lab 1', 'Lab 2', 'Lab 3', 'Lab 4', 'Lab 5', 'Lab 6', 'Lab 7', 'Lab 8', 'Lab 9', 'Lab 10', 'Lab 11']
+        existing_labs = [lab['lab_room'] for lab in lab_stats]
+        
+        # Add missing labs with count 0
+        for lab in default_labs:
+            if lab not in existing_labs:
+                lab_stats.append({
+                    'lab_room': lab,
+                    'count': 0,
+                    'percentage': 0,
+                    'total_hours': 0
+                })
+    except Exception as e:
+        print(f"Error getting lab stats: {str(e)}")
+        lab_stats = []
+    
     # Get feedback statistics
     try:
         cursor.execute("""
@@ -593,7 +676,7 @@ def admin_dashboard():
     # Get feedback list with student and session details
     try:
         cursor.execute("""
-        SELECT f.*, s.lab_room, st.firstname, st.lastname
+        SELECT f.*, s.lab_room, st.firstname, st.lastname, st.idno
         FROM feedback f
         JOIN sessions s ON f.session_id = s.id
         JOIN students st ON f.student_id = st.id
@@ -619,9 +702,155 @@ def admin_dashboard():
                           pending_sessions=pending_sessions,
                           current_sit_ins=current_sit_ins,
                           recent_activity=recent_activity,
+                          language_stats=language_stats,
+                          lab_stats=lab_stats,
                           feedback_stats=feedback_stats,
                           feedback_list=feedback_list,
                           announcements=announcements)
+
+@app.route('/export-report/<format>')
+@admin_required
+def export_report(format):
+    if format not in ['csv', 'pdf', 'excel']:
+        flash('Invalid export format', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Get all sessions
+    cursor.execute("""
+    SELECT s.*, st.firstname, st.lastname, st.idno, st.course
+    FROM sessions s
+    JOIN students st ON s.student_id = st.id
+    ORDER BY s.date_time DESC
+    """)
+    sessions = cursor.fetchall()
+    
+    cursor.close()
+    conn.close()
+    
+    if format == 'csv':
+        # Generate CSV
+        import csv
+        from io import StringIO
+        import datetime
+        
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow(['ID', 'Student ID', 'Student Name', 'Course', 'Lab Room', 'Date & Time', 
+                         'Duration', 'Programming Language', 'Purpose', 'Status'])
+        
+        # Map lab room codes to actual room numbers
+        lab_room_mapping = {
+            'Lab 1': 'Lab 524 (Lab 1)',
+            'Lab 2': 'Lab 526 (Lab 2)',
+            'Lab 3': 'Lab 528 (Lab 3)',
+            'Lab 4': 'Lab 530 (Lab 4)',
+            'Lab 5': 'Lab 532 (Lab 5)',
+            'Lab 6': 'Lab 534 (Lab 6)',
+            'Lab 7': 'Lab 536 (Lab 7)',
+            'Lab 8': 'Lab 538 (Lab 8)',
+            'Lab 9': 'Lab 540 (Lab 9)',
+            'Lab 10': 'Lab 542 (Lab 10)',
+            'Lab 11': 'Lab 544 (Lab 11)'
+        }
+        
+        # Write data
+        for session in sessions:
+            course_name = ''
+            if session['course'] == '1':
+                course_name = 'BSIT'
+            elif session['course'] == '2':
+                course_name = 'BSCS'
+            elif session['course'] == '3':
+                course_name = 'BSCE'
+            else:
+                course_name = session['course']
+            
+            # Get the actual lab room name with number
+            lab_room_display = lab_room_mapping.get(session['lab_room'], session['lab_room'])
+                
+            writer.writerow([
+                session['id'],
+                session['idno'],
+                f"{session['firstname']} {session['lastname']}",
+                course_name,
+                lab_room_display,
+                session['date_time'].strftime('%Y-%m-%d %H:%M') if isinstance(session['date_time'], datetime.datetime) else session['date_time'],
+                session['duration'],
+                session.get('programming_language', 'Not specified'),
+                session.get('purpose', 'Not specified')[:50] + '...' if session.get('purpose') and len(session.get('purpose')) > 50 else session.get('purpose', 'Not specified'),
+                session['status']
+            ])
+        
+        output.seek(0)
+        
+        from flask import Response
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-disposition": "attachment; filename=sit_in_sessions_report.csv"}
+        )
+    
+    elif format == 'excel':
+        # For Excel, we'd typically use a library like openpyxl or xlsxwriter
+        # For simplicity, we'll just return a CSV with an Excel mimetype
+        import csv
+        from io import StringIO
+        import datetime
+        
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow(['ID', 'Student ID', 'Student Name', 'Course', 'Lab Room', 'Date & Time', 
+                         'Duration', 'Programming Language', 'Purpose', 'Status'])
+        
+        # Write data
+        for session in sessions:
+            course_name = ''
+            if session['course'] == '1':
+                course_name = 'BSIT'
+            elif session['course'] == '2':
+                course_name = 'BSCS'
+            elif session['course'] == '3':
+                course_name = 'BSCE'
+            else:
+                course_name = session['course']
+            
+            # Get the actual lab room name with number
+            lab_room_display = lab_room_mapping.get(session['lab_room'], session['lab_room'])
+                
+            writer.writerow([
+                session['id'],
+                session['idno'],
+                f"{session['firstname']} {session['lastname']}",
+                course_name,
+                lab_room_display,
+                session['date_time'].strftime('%Y-%m-%d %H:%M') if isinstance(session['date_time'], datetime.datetime) else session['date_time'],
+                session['duration'],
+                session.get('programming_language', 'Not specified'),
+                session.get('purpose', 'Not specified')[:50] + '...' if session.get('purpose') and len(session.get('purpose')) > 50 else session.get('purpose', 'Not specified'),
+                session['status']
+            ])
+        
+        output.seek(0)
+        
+        from flask import Response
+        return Response(
+            output.getvalue(),
+            mimetype="application/vnd.ms-excel",
+            headers={"Content-disposition": "attachment; filename=sit_in_sessions_report.xls"}
+        )
+    
+    elif format == 'pdf':
+        # For PDF generation, we'd typically use a library like ReportLab or WeasyPrint
+        # This is a placeholder that would be implemented with a proper PDF library
+        flash('PDF export is not implemented yet', 'info')
+        return redirect(url_for('admin_dashboard'))
 
 @app.route('/edit-profile', methods=['GET', 'POST'])
 @login_required
@@ -707,6 +936,7 @@ def add_session():
     date_time = request.form['date_time']
     duration = request.form['duration']
     programming_language = request.form.get('programming_language', '')
+    purpose = request.form.get('purpose', '')
     
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -724,26 +954,50 @@ def add_session():
         cursor.execute("SHOW COLUMNS FROM sessions LIKE 'programming_language'")
         has_programming_language = cursor.fetchone() is not None
         
+        # Check if purpose column exists
+        cursor.execute("SHOW COLUMNS FROM sessions LIKE 'purpose'")
+        has_purpose = cursor.fetchone() is not None
+        
         # Check if approval_status column exists
         cursor.execute("SHOW COLUMNS FROM sessions LIKE 'approval_status'")
         has_approval_status = cursor.fetchone() is not None
         
         # Add new session with pending status
-        if has_programming_language and has_approval_status:
+        if has_programming_language and has_purpose and has_approval_status:
+            cursor.execute("""
+            INSERT INTO sessions (student_id, lab_room, date_time, duration, programming_language, purpose, status, approval_status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (session['user_id'], lab_room, date_time, duration, programming_language, purpose, 'pending', 'pending'))
+        elif has_programming_language and has_approval_status:
             cursor.execute("""
             INSERT INTO sessions (student_id, lab_room, date_time, duration, programming_language, status, approval_status)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (session['user_id'], lab_room, date_time, duration, programming_language, 'pending', 'pending'))
+        elif has_purpose and has_approval_status:
+            cursor.execute("""
+            INSERT INTO sessions (student_id, lab_room, date_time, duration, purpose, status, approval_status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (session['user_id'], lab_room, date_time, duration, purpose, 'pending', 'pending'))
         elif has_approval_status:
             cursor.execute("""
             INSERT INTO sessions (student_id, lab_room, date_time, duration, status, approval_status)
             VALUES (%s, %s, %s, %s, %s, %s)
             """, (session['user_id'], lab_room, date_time, duration, 'pending', 'pending'))
+        elif has_programming_language and has_purpose:
+            cursor.execute("""
+            INSERT INTO sessions (student_id, lab_room, date_time, duration, programming_language, purpose, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (session['user_id'], lab_room, date_time, duration, programming_language, purpose, 'pending'))
         elif has_programming_language:
             cursor.execute("""
             INSERT INTO sessions (student_id, lab_room, date_time, duration, programming_language, status)
             VALUES (%s, %s, %s, %s, %s, %s)
             """, (session['user_id'], lab_room, date_time, duration, programming_language, 'pending'))
+        elif has_purpose:
+            cursor.execute("""
+            INSERT INTO sessions (student_id, lab_room, date_time, duration, purpose, status)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """, (session['user_id'], lab_room, date_time, duration, purpose, 'pending'))
         else:
             cursor.execute("""
             INSERT INTO sessions (student_id, lab_room, date_time, duration, status)
@@ -1240,6 +1494,43 @@ def student_announcements():
     conn.close()
     
     return render_template('student_announcements.html', student=student, announcements=announcements)
+
+@app.route('/admin/delete-student/<int:student_id>', methods=['POST'])
+@admin_required
+def delete_student(student_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        # Check if student exists
+        cursor.execute("SELECT * FROM students WHERE id = %s", (student_id,))
+        student = cursor.fetchone()
+        
+        if not student:
+            flash('Student not found', 'error')
+            return redirect(url_for('admin_dashboard'))
+        
+        # Delete student's sessions
+        cursor.execute("DELETE FROM sessions WHERE student_id = %s", (student_id,))
+        
+        # Delete student's feedback
+        cursor.execute("DELETE FROM feedback WHERE student_id = %s", (student_id,))
+        
+        # Delete the student
+        cursor.execute("DELETE FROM students WHERE id = %s", (student_id,))
+        
+        conn.commit()
+        flash(f'Student {student["firstname"]} {student["lastname"]} has been deleted successfully', 'success')
+        
+    except Exception as e:
+        conn.rollback()
+        flash(f'Failed to delete student: {str(e)}', 'error')
+        
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for('admin_dashboard'))
 
 # Make sure to run init_db() when the app starts
 with app.app_context():

@@ -455,7 +455,7 @@
                         {% elif student.course == '3' %}
                             BSCE
                         {% else %}
-                            Other
+                            {{ student.course }}
                         {% endif %}
                     </p>
                     <a href="{{ url_for('logout') }}"><button class="logout-btn">Logout</button></a>
@@ -479,7 +479,7 @@
                         {% elif student.course == '3' %}
                             Bachelor of Science in Computer Engineering
                         {% else %}
-                            Other
+                            {{ student.course }}
                         {% endif %}
                     </p>
                     <p><strong>Year Level:</strong> {{ student.year_level }}</p>
@@ -599,6 +599,11 @@
                         </select>
                     </div>
                     
+                    <div class="form-group">
+                        <label for="purpose">Purpose</label>
+                        <textarea name="purpose" id="purpose" class="form-control" rows="3" placeholder="Describe the purpose of your sit-in session..." required></textarea>
+                    </div>
+                    
                     <button type="submit" class="btn-primary">Schedule Session</button>
                 </form>
             {% else %}
@@ -638,6 +643,7 @@
                             <th>Duration</th>
                             <th>Status</th>
                             <th>Programming Language</th>
+                            <th>Purpose</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -659,13 +665,14 @@
                                     {% endif %}
                                 </td>
                                 <td>{{ session.programming_language|default('Not specified') }}</td>
+                                <td>{{ session.purpose|default('Not specified')|string|truncate(30) }}</td>
                                 <td>
                                     {% if session.status == 'active' %}
                                         <form action="{{ url_for('cancel_session', session_id=session.id) }}" method="POST" style="display: inline;">
                                             <button type="submit" class="action-btn cancel-btn">Cancel</button>
                                         </form>
                                     {% elif session.status == 'completed' %}
-                                        <button class="action-btn feedback-btn" onclick="showFeedbackForm({{ session.id }})">Feedback</button>
+                                        <button class="action-btn feedback-btn" onclick="showFeedbackForm('{{ session.id }}')">Feedback</button>
                                     {% elif session.status == 'pending' %}
                                         <span>Awaiting approval</span>
                                     {% else %}
@@ -765,8 +772,8 @@
         
         // Calculate progress bar width
         document.addEventListener('DOMContentLoaded', function() {
-            var sessionsUsed = {{ student.sessions_used|default(0) }};
-            var maxSessions = {{ student.max_sessions|default(25) }};
+            var sessionsUsed = parseInt('{{ student.sessions_used|default(0) }}');
+            var maxSessions = parseInt('{{ student.max_sessions|default(25) }}');
             var progressBar = document.getElementById('sessionsProgressBar');
             
             if (progressBar && maxSessions > 0) {
