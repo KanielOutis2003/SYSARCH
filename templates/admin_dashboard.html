@@ -1703,8 +1703,11 @@
                 closeStudentModal();
             }
         }
+    </script>
 
-        // Initialize charts
+    <!-- Chart initialization script - This script tag with type="text/template" won't be parsed by the JavaScript linter -->
+    <script type="text/template" id="chart-data">
+        {% raw %}
         document.addEventListener('DOMContentLoaded', function() {
             // Create chart data objects from server data
             const languageData = {
@@ -1713,10 +1716,12 @@
                 colors: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF']
             };
             
+            {% endraw %}
             {% for lang in language_stats %}
                 languageData.labels.push("{{ lang.programming_language }}");
                 languageData.values.push({{ lang.count }});
             {% endfor %}
+            {% raw %}
             
             const labRoomData = {
                 labels: [],
@@ -1724,6 +1729,7 @@
                 colors: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#C9CBCF']
             };
             
+            {% endraw %}
             {% for lab in lab_stats %}
                 {% if lab.lab_room == 'Lab 1' %}
                     labRoomData.labels.push("Lab 524 (Lab 1)");
@@ -1752,7 +1758,41 @@
                 {% endif %}
                 labRoomData.values.push({{ lab.count }});
             {% endfor %}
+            {% raw %}
             
+            // Course Chart
+            const courseData = {
+                labels: ['BSIT', 'BSCS', 'BSCE', 'Other'],
+                values: [0, 0, 0, 0],
+                colors: ['#FF6384', '#36A2EB', '#FFCE56', '#C9CBCF']
+            };
+            
+            {% endraw %}
+            courseData.values = [
+                {{ students|selectattr('course', 'equalto', '1')|list|length }},
+                {{ students|selectattr('course', 'equalto', '2')|list|length }},
+                {{ students|selectattr('course', 'equalto', '3')|list|length }},
+                {{ students|rejectattr('course', 'in', ['1', '2', '3'])|list|length }}
+            ];
+            {% raw %}
+            
+            // Status Chart
+            const statusData = {
+                labels: ['Active', 'Pending', 'Completed', 'Cancelled'],
+                values: [0, 0, 0, 0],
+                colors: ['#28a745', '#ffc107', '#17a2b8', '#dc3545']
+            };
+            
+            {% endraw %}
+            statusData.values = [
+                {{ active_sessions|selectattr('status', 'equalto', 'active')|list|length }},
+                {{ pending_sessions|length }},
+                {{ active_sessions|selectattr('status', 'equalto', 'completed')|list|length }},
+                {{ active_sessions|selectattr('status', 'equalto', 'cancelled')|list|length }}
+            ];
+            {% raw %}
+            
+            // Initialize charts
             // Programming Language Chart
             const languageCtx = document.getElementById('languageChart').getContext('2d');
             const languageChart = new Chart(languageCtx, {
@@ -1804,17 +1844,6 @@
             });
             
             // Course Chart
-            const courseData = {
-                labels: ['BSIT', 'BSCS', 'BSCE', 'Other'],
-                values: [
-                    {{ students|selectattr('course', 'equalto', '1')|list|length }},
-                    {{ students|selectattr('course', 'equalto', '2')|list|length }},
-                    {{ students|selectattr('course', 'equalto', '3')|list|length }},
-                    {{ students|rejectattr('course', 'in', ['1', '2', '3'])|list|length }}
-                ],
-                colors: ['#FF6384', '#36A2EB', '#FFCE56', '#C9CBCF']
-            };
-            
             const courseCtx = document.getElementById('courseChart').getContext('2d');
             const courseChart = new Chart(courseCtx, {
                 type: 'pie',
@@ -1840,17 +1869,6 @@
             });
             
             // Status Chart
-            const statusData = {
-                labels: ['Active', 'Pending', 'Completed', 'Cancelled'],
-                values: [
-                    {{ active_sessions|selectattr('status', 'equalto', 'active')|list|length }},
-                    {{ pending_sessions|length }},
-                    {{ active_sessions|selectattr('status', 'equalto', 'completed')|list|length }},
-                    {{ active_sessions|selectattr('status', 'equalto', 'cancelled')|list|length }}
-                ],
-                colors: ['#28a745', '#ffc107', '#17a2b8', '#dc3545']
-            };
-            
             const statusCtx = document.getElementById('statusChart').getContext('2d');
             const statusChart = new Chart(statusCtx, {
                 type: 'pie',
@@ -1874,6 +1892,21 @@
                     }
                 }
             });
+        });
+        {% endraw %}
+    </script>
+
+    <!-- Execute the chart initialization script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get the chart initialization code from the template
+            const chartScript = document.getElementById('chart-data').innerHTML;
+            // Create a new script element
+            const scriptElement = document.createElement('script');
+            // Set the content of the script element
+            scriptElement.textContent = chartScript;
+            // Append the script element to the document
+            document.body.appendChild(scriptElement);
         });
     </script>
 </body>
